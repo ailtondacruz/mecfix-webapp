@@ -1,0 +1,346 @@
+import { Layout, Button, Card } from '../../../shared';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import { auth, storage } from '../../../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useNavigate } from 'react-router-dom';
+import React, { useState, type ComponentProps } from 'react';
+
+interface CreateWorkshopModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { name: string; email: string; phone: string }) => Promise<void>;
+}
+
+
+function getLogoButtonLabel(isUploading: boolean, hasLogo: boolean): string {
+  if (isUploading) return 'Enviando...';
+  if (hasLogo) return '🖼 Trocar logo';
+  return '+ Logo';
+}
+
+async function readJsonSafely(response: Response): Promise<any> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function CreateWorkshopModal({ isOpen, onClose, onSubmit }: Readonly<CreateWorkshopModalProps>) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+
+  if (!isOpen) return null;
+
+  const handleSubmit: ComponentProps<'form'>['onSubmit'] = (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    void (async () => {
+      try {
+        await onSubmit(formData);
+        setFormData({ name: '', email: '', phone: '' });
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao criar oficina');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <Card className="w-full max-w-md">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900">Nova Oficina</h2>
+          <p className="mt-1 text-sm text-slate-600">Preencha os dados da sua oficina</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="workshop-name-modal" className="block text-sm font-medium text-slate-900">Nome da Oficina</label>
+            <input
+              id="workshop-name-modal"
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Ex: Oficina João"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="workshop-email-modal" className="block text-sm font-medium text-slate-900">E-mail</label>
+            <input
+              id="workshop-email-modal"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="contato@oficina.com"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="workshop-phone-modal" className="block text-sm font-medium text-slate-900">Telefone</label>
+            <input
+              id="workshop-phone-modal"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="(11) 99999-9999"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-center text-sm font-medium text-red-700">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" isLoading={isLoading} className="flex-1">
+              Criar
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+export function WorkshopDashboardPage() {
+  const { workshop, refreshWorkshop } = useAuth();
+  const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [workshops, setWorkshops] = useState<any[]>([]);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !workshop) return;
+
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Apenas imagens são permitidas');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Imagem deve ter no máximo 2 MB');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    setLogoError('');
+
+    void (async () => {
+      try {
+        const storageRef = ref(storage, `workshops/${workshop.workshopId}/logo`);
+        await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(storageRef);
+
+        const token = await auth.currentUser?.getIdToken();
+        const response = await fetch(`/api/workshops/${workshop.workshopId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ logoUrl: downloadUrl }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Falha ao salvar logo');
+        }
+
+        await refreshWorkshop();
+      } catch (err) {
+        setLogoError(err instanceof Error ? err.message : 'Erro ao enviar logo');
+      } finally {
+        setIsUploadingLogo(false);
+        event.target.value = '';
+      }
+    })();
+  };
+
+  const handleCreateWorkshop = async (data: { name: string; email: string; phone: string }) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const response = await fetch('/api/workshops', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || 'Erro ao criar oficina');
+      }
+
+      if (!result?.data) {
+        throw new Error('Resposta vazia ao criar oficina');
+      }
+      setWorkshops([...workshops, result.data]);
+    } catch (error) {
+      throw error instanceof Error ? error : new Error('Erro ao criar oficina');
+    }
+  };
+
+  return (
+    <Layout title="Painel">
+      <div className="space-y-4">
+        {/* Sem oficina */}
+        {!workshop && (
+          <Card>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-3 text-4xl">🏗️</div>
+              <h3 className="mb-1 text-lg font-bold text-slate-900">Nenhuma oficina cadastrada</h3>
+              <p className="mb-4 text-sm text-slate-600">Comece criando sua primeira oficina</p>
+              <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+                + Nova Oficina
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Cabeçalho da oficina + logo */}
+        {workshop && (
+          <Card>
+            <div className="flex items-center gap-4">
+              {workshop.logoUrl ? (
+                <img
+                  src={workshop.logoUrl}
+                  alt={workshop.name}
+                  className="h-14 w-14 shrink-0 rounded-xl border border-slate-200 object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-mecfix-navy text-xl font-black text-white">
+                  {workshop.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-base font-bold text-slate-900">{workshop.name}</h3>
+                <p className="truncate text-xs text-slate-500">{workshop.email}</p>
+              </div>
+
+              <label className="shrink-0 cursor-pointer">
+                <span className={`btn-outline btn-sm inline-flex items-center gap-1 text-xs ${isUploadingLogo ? 'opacity-60 pointer-events-none' : ''}`}>
+                  {getLogoButtonLabel(isUploadingLogo, Boolean(workshop.logoUrl))}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleLogoUpload}
+                  disabled={isUploadingLogo}
+                />
+              </label>
+            </div>
+
+            {logoError ? (
+              <p className="mt-2 text-xs text-red-600">{logoError}</p>
+            ) : null}
+          </Card>
+        )}
+
+        {/* Stats */}
+        {workshop && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Card className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-slate-500">Clientes</p>
+              <p className="text-2xl font-bold text-slate-900">0</p>
+              <div className="h-1 w-full rounded-full bg-blue-500/20" />
+            </Card>
+
+            <Card className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-slate-500">Veículos</p>
+              <p className="text-2xl font-bold text-slate-900">0</p>
+              <div className="h-1 w-full rounded-full bg-green-500/20" />
+            </Card>
+
+            <Card className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-slate-500">Orçamentos</p>
+              <p className="text-2xl font-bold text-slate-900">0</p>
+              <div className="h-1 w-full rounded-full bg-orange-500/20" />
+            </Card>
+
+            <Card className="space-y-1">
+              <p className="text-xs font-semibold uppercase text-slate-500">Faturamento</p>
+              <p className="text-xl font-bold text-slate-900">R$ 0</p>
+              <div className="h-1 w-full rounded-full bg-purple-500/20" />
+            </Card>
+          </div>
+        )}
+
+        {/* Navegação */}
+        {workshop && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg">
+              <div className="text-center">
+                <div className="mb-2 text-2xl">👥</div>
+                <h4 className="text-sm font-semibold text-slate-900">Clientes</h4>
+                <p className="text-xs text-slate-500">Gerenciar</p>
+              </div>
+            </Card>
+
+            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg">
+              <div className="text-center">
+                <div className="mb-2 text-2xl">🚗</div>
+                <h4 className="text-sm font-semibold text-slate-900">Veículos</h4>
+                <p className="text-xs text-slate-500">Gerenciar</p>
+              </div>
+            </Card>
+
+            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg" onClick={() => navigate('/workshop/budgets')}>
+              <div className="text-center">
+                <div className="mb-2 text-2xl">📋</div>
+                <h4 className="text-sm font-semibold text-slate-900">Orçamentos</h4>
+                <p className="text-xs text-slate-500">PDF e WhatsApp</p>
+              </div>
+            </Card>
+
+            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg">
+              <div className="text-center">
+                <div className="mb-2 text-2xl">💰</div>
+                <h4 className="text-sm font-semibold text-slate-900">Financeiro</h4>
+                <p className="text-xs text-slate-500">Ver finanças</p>
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      <CreateWorkshopModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateWorkshop}
+      />
+    </Layout>
+  );
+}

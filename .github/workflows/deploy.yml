@@ -1,0 +1,56 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# MecFix Webapp — Deploy to Firebase Hosting
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# SECRETS necessários neste repositório (Settings → Secrets → Actions):
+#
+#   GCP_PROJECT_ID          → ID do projeto Firebase (ex: mecfix-prod)
+#   FIREBASE_SERVICE_ACCOUNT → JSON da Service Account com a role:
+#                               - roles/firebasehosting.admin
+#
+# Como obter o FIREBASE_SERVICE_ACCOUNT:
+#   firebase init hosting  (escolha "Set up GitHub Actions")
+#   O Firebase cria e configura o secret automaticamente.
+#   OU: Console Firebase → Configurações → Contas de serviço → Gerar nova chave
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build & Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      # ── Deploy ───────────────────────────────────────────────────────────────
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken:              ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId:              live
+          projectId:              ${{ secrets.GCP_PROJECT_ID }}

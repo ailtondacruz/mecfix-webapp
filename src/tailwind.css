@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+	--color-mecfix-orange: #ff7a00;
+	--color-mecfix-orange-soft: #fff1e6;
+	--color-mecfix-navy: #0b1c36;
+	--color-mecfix-navy-soft: #172b4a;
+	--color-mecfix-surface: #ffffff;
+	--color-mecfix-page: #eef2f8;
+	--font-sans: 'Sora', 'Segoe UI', sans-serif;
+}
+
+@layer base {
+	body {
+		@apply bg-mecfix-page text-slate-900 antialiased;
+		background-image:
+			radial-gradient(circle at top left, rgba(255, 122, 0, 0.14), transparent 30%),
+			radial-gradient(circle at top right, rgba(15, 33, 63, 0.16), transparent 28%),
+			linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
+	}
+
+	#root {
+		@apply min-h-screen;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	strong {
+		@apply text-slate-900;
+	}
+
+	p {
+		@apply text-slate-700;
+	}
+}
+
+@layer components {
+	.app-shell {
+		@apply min-h-screen;
+	}
+
+	.app-frame {
+		@apply mx-auto w-full max-w-[1440px] px-2 py-0 sm:px-4 lg:px-8;
+	}
+
+	.glass-panel {
+		@apply rounded-[28px] border border-white/70 bg-white/85 shadow-[0_24px_80px_rgba(15,33,63,0.12)] backdrop-blur;
+	}
+
+	.section-title {
+		@apply text-base font-semibold uppercase tracking-[0.18em] text-slate-500;
+	}
+
+	.section-subtitle {
+		@apply text-sm text-slate-600;
+	}
+
+	.flex-center {
+		@apply flex items-center justify-center;
+	}
+
+	.card {
+		@apply rounded-[20px] border border-white/70 bg-white/92 p-4 shadow-[0_16px_50px_rgba(15,33,63,0.08)] backdrop-blur sm:p-5;
+	}
+
+	.card-header {
+		@apply mb-5 flex items-center justify-between gap-4;
+	}
+
+	.input-field {
+		@apply w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-mecfix-orange focus:ring-4 focus:ring-orange-100;
+	}
+
+	.btn-primary {
+		@apply inline-flex items-center justify-center gap-2 rounded-2xl bg-mecfix-orange px-4 py-3 font-semibold text-white shadow-[0_14px_28px_rgba(255,122,0,0.28)] transition hover:-translate-y-0.5 hover:brightness-95 hover:shadow-[0_18px_32px_rgba(255,122,0,0.34)] disabled:cursor-not-allowed disabled:opacity-60;
+	}
+
+	.btn-secondary {
+		@apply inline-flex items-center justify-center gap-2 rounded-2xl bg-mecfix-navy px-4 py-3 font-semibold text-white shadow-[0_14px_28px_rgba(11,28,54,0.24)] transition hover:-translate-y-0.5 hover:bg-mecfix-navy-soft disabled:cursor-not-allowed disabled:opacity-60;
+	}
+
+	.btn-outline {
+		@apply inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition hover:border-mecfix-navy hover:bg-mecfix-navy hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
+	}
+
+	.btn-sm {
+		@apply rounded-xl px-3 py-2 text-sm;
+	}
+
+	.stat-card {
+		@apply rounded-[24px] border border-white/70 bg-white/90 p-6 shadow-[0_16px_50px_rgba(15,33,63,0.08)];
+	}
+
+	.stat-label {
+		@apply text-sm font-medium text-slate-600;
+	}
+
+	.stat-value {
+		@apply text-3xl font-extrabold tracking-tight text-slate-900;
+	}
+
+	.page-grid {
+		@apply grid gap-6 lg:gap-8;
+	}
+
+	.empty-state {
+		@apply rounded-[24px] border border-dashed border-slate-300 bg-slate-50/80 px-6 py-14 text-center;
+	}
+
+	.soft-chip {
+		@apply inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-600;
+	}
+}
