@@ -16,6 +16,21 @@ export interface CreateBudgetInput {
   items: BudgetLineInput[];
 }
 
+export interface ListBudgetsFilters {
+  year?: number;
+  month?: number;
+  q?: string;
+  status?: 'all' | 'pending' | 'approved' | 'rejected' | 'expired';
+}
+
+export interface BudgetMonthlyStats {
+  total: number;
+  totalValue: number;
+  pending: number;
+  approved: number;
+  approvedValue: number;
+}
+
 async function getAuthToken(): Promise<string> {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -39,9 +54,18 @@ async function readJsonSafely(response: Response): Promise<any> {
   }
 }
 
-export async function listBudgets(): Promise<Budget[]> {
+export async function listBudgets(filters: ListBudgetsFilters = {}): Promise<Budget[]> {
   const token = await getAuthToken();
-  const response = await fetch('/api/budgets', {
+  const params = new URLSearchParams();
+
+  if (filters.year !== undefined) params.set('year', String(filters.year));
+  if (filters.month !== undefined) params.set('month', String(filters.month));
+  if (filters.q?.trim()) params.set('q', filters.q.trim());
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+
+  const endpoint = params.size > 0 ? `/api/budgets?${params.toString()}` : '/api/budgets';
+
+  const response = await fetch(endpoint, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -54,6 +78,29 @@ export async function listBudgets(): Promise<Budget[]> {
   }
 
   return Array.isArray(payload?.data) ? payload.data : [];
+}
+
+export async function getMonthlyBudgetStats(year: number, month: number): Promise<BudgetMonthlyStats> {
+  const token = await getAuthToken();
+  const response = await fetch(`/api/budgets/stats/monthly?year=${year}&month=${month}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const payload = await readJsonSafely(response);
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || 'Falha ao carregar estatísticas');
+  }
+
+  return (payload?.data ?? {
+    total: 0,
+    totalValue: 0,
+    pending: 0,
+    approved: 0,
+    approvedValue: 0,
+  }) as BudgetMonthlyStats;
 }
 
 export async function createBudget(input: CreateBudgetInput): Promise<Budget> {
@@ -141,5 +188,37 @@ export async function downloadBudgetPdf(budgetId: string): Promise<void> {
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener,noreferrer');
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  globalThis.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// ── Public (client-facing, no auth) ───────────────────────────────────────
+
+export async function getBudgetByToken(shareToken: string): Promise<Budget> {
+  const response = await fetch(`/api/budgets/public/${shareToken}`);
+  const payload = await readJsonSafely(response);
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || 'Orçamento não encontrado');
+  }
+
+  return payload.data as Budget;
+}
+
+export async function respondToBudget(
+  shareToken: string,
+  action: 'approve' | 'reject',
+): Promise<Budget> {
+  const response = await fetch(`/api/budgets/public/${shareToken}/respond`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
+
+  const payload = await readJsonSafely(response);
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || 'Falha ao responder orçamento');
+  }
+
+  return payload.data as Budget;
 }

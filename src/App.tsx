@@ -3,7 +3,10 @@ import { AuthProvider } from './features/auth/components/AuthProvider';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
 import { BudgetsPage } from './features/workshop/budgets/pages/BudgetsPage';
+import { BudgetPublicPage } from './features/workshop/budgets/pages/BudgetPublicPage';
+import { CustomersPage } from './features/workshop/customers/pages/CustomersPage';
 import { WorkshopDashboardPage } from './features/workshop/pages/WorkshopDashboardPage';
+import { FinancialsPage } from './features/workshop/financials/pages/FinancialsPage';
 import { ProtectedRoute } from './shared';
 
 function AppRoutes() {
@@ -11,6 +14,7 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/auth/login" element={<LoginPage />} />
+      <Route path="/o/:shareToken" element={<BudgetPublicPage />} />
 
       {/* Protected Routes - Admin Only */}
       <Route
@@ -36,6 +40,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredRoles={['owner', 'mechanic', 'attendant']}>
             <BudgetsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workshop/customers"
+        element={
+          <ProtectedRoute requiredRoles={['owner', 'mechanic', 'attendant']}>
+            <CustomersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workshop/financials"
+        element={
+          <ProtectedRoute requiredRoles={['owner', 'mechanic', 'attendant']}>
+            <FinancialsPage />
           </ProtectedRoute>
         }
       />

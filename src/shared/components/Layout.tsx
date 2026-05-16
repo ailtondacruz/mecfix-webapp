@@ -13,6 +13,16 @@ interface LayoutProps {
 export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
   const navigate = useNavigate();
   const { isAuthenticated, logout, workshop } = useAuth();
+  const isBillingBlocked = workshop?.status === 'blocked';
+
+  let billingLabel = '';
+  if (workshop?.billingStatus === 'pending') {
+    billingLabel = 'Pagamento pendente';
+  } else if (workshop?.billingStatus === 'overdue') {
+    billingLabel = 'Pagamento em atraso';
+  } else if (workshop?.billingStatus === 'suspended') {
+    billingLabel = 'Oficina suspensa';
+  }
 
   const handleLogout = () => {
     void (async () => {
@@ -24,7 +34,7 @@ export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
   return (
     <div className="app-shell">
       <div className="app-frame">
-        <header className="sticky top-0 z-50 mb-4 border-b border-slate-200 bg-white/97 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-50 mb-4 -mx-3 border-b border-slate-200 bg-white/97 px-3 py-3 shadow-sm backdrop-blur sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               {backTo ? (
@@ -70,6 +80,22 @@ export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
             </div>
           </div>
         </header>
+
+        {isBillingBlocked ? (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">{billingLabel || 'Acesso temporariamente bloqueado'}</p>
+                <p className="text-xs text-amber-800">
+                  As funcionalidades estão desativadas até a regularização do pagamento da oficina.
+                </p>
+              </div>
+              <span className="inline-flex self-start rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                somente consulta
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         <main className="pb-6">{children}</main>
       </div>

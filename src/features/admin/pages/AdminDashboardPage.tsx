@@ -2,7 +2,8 @@ import { useEffect, useState, type ComponentProps } from 'react';
 import { Layout, Card, Button } from '../../../shared';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { auth } from '../../../services/firebase';
-import type { Workshop } from '../../../shared';
+import type { Workshop, WorkshopBillingOverview } from '../../../shared';
+import { getBillingOverview } from '../services/billing.service';
 
 interface WorkshopOwnerCredentials {
   userId: string;
@@ -28,6 +29,8 @@ interface WorkshopFormState {
   documentNumber: string;
   email: string;
   phone: string;
+  monthlyFee: string;
+  billingDueDay: string;
   ownerName: string;
   ownerEmail: string;
 }
@@ -39,6 +42,8 @@ const initialFormState: WorkshopFormState = {
   documentNumber: '',
   email: '',
   phone: '',
+  monthlyFee: '0',
+  billingDueDay: '10',
   ownerName: '',
   ownerEmail: '',
 };
@@ -74,11 +79,40 @@ async function readJsonSafely(response: Response): Promise<any> {
   }
 }
 
+function formatBRL(value: number | undefined): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
+}
+
+function formatDueInDays(value: number | null): string {
+  if (value === null) {
+    return '—';
+  }
+
+  if (value < 0) {
+    return `${Math.abs(value)} atrasado`;
+  }
+
+  return `${value} dia(s)`;
+}
+
+function formatBillingDate(value: string | undefined): string {
+  if (!value) {
+    return 'Não definido';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Não definido';
+  }
+
+  return date.toLocaleDateString('pt-BR');
+}
+
 type CreateWorkshopModalProps = Readonly<{
-  isOpen,
-  onClose,
-  onSubmit,
-  isSubmitting,
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: WorkshopFormState) => Promise<void>;
+  isSubmitting: boolean;
 }>;
 
 function CreateWorkshopModal({
@@ -218,6 +252,37 @@ function CreateWorkshopModal({
             />
           </div>
 
+          <div>
+            <label htmlFor="workshop-monthly-fee" className="mb-2 block text-sm font-semibold text-slate-700">Valor mensal</label>
+            <input
+              id="workshop-monthly-fee"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.monthlyFee}
+              onChange={(event) => setFormState({ ...formState, monthlyFee: event.target.value })}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
+              placeholder="99.90"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="workshop-billing-due-day" className="mb-2 block text-sm font-semibold text-slate-700">Dia do vencimento</label>
+            <input
+              id="workshop-billing-due-day"
+              type="number"
+              min="1"
+              max="28"
+              step="1"
+              value={formState.billingDueDay}
+              onChange={(event) => setFormState({ ...formState, billingDueDay: event.target.value })}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
+              placeholder="10"
+              required
+            />
+          </div>
+
           <div className="md:col-span-2 mt-2 border-t border-slate-200 pt-4">
             <p className="section-subtitle">Responsável inicial</p>
             <h3 className="mt-2 text-lg font-semibold text-slate-900">Owner da oficina</h3>
@@ -271,6 +336,8 @@ function CreateWorkshopModal({
 export function AdminDashboardPage() {
   const { user } = useAuth();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [billingOverview, setBillingOverview] = useState<WorkshopBillingOverview | null>(null);
+  const [billingDueDayDrafts, setBillingDueDayDrafts] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -279,7 +346,14 @@ export function AdminDashboardPage() {
 
   useEffect(() => {
     void loadWorkshops();
+    void loadBillingOverview();
   }, []);
+
+  function syncBillingDueDayDrafts(items: Workshop[]) {
+    setBillingDueDayDrafts(
+      Object.fromEntries(items.map((workshop) => [workshop.workshopId, String(workshop.billingDueDay ?? 10)])),
+    );
+  }
 
   async function loadWorkshops() {
     setIsLoading(true);
@@ -301,11 +375,22 @@ export function AdminDashboardPage() {
         );
       }
 
-      setWorkshops(Array.isArray(payload?.data) ? payload.data : []);
+      const items = Array.isArray(payload?.data) ? payload.data : [];
+      setWorkshops(items);
+      syncBillingDueDayDrafts(items);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Falha ao carregar oficinas');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadBillingOverview() {
+    try {
+      const overview = await getBillingOverview();
+      setBillingOverview(overview);
+    } catch (error) {
+      setLoadError((current) => current || (error instanceof Error ? error.message : 'Falha ao carregar assinaturas'));
     }
   }
 
@@ -321,7 +406,11 @@ export function AdminDashboardPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formState),
+        body: JSON.stringify({
+          ...formState,
+          monthlyFee: Number(formState.monthlyFee),
+          billingDueDay: Number(formState.billingDueDay),
+        }),
       });
 
       const payload = await readJsonSafely(response) as CreateWorkshopResponse | null;
@@ -337,7 +426,9 @@ export function AdminDashboardPage() {
       }
 
       setWorkshops((current) => [payload.data.workshop, ...current]);
+      syncBillingDueDayDrafts([payload.data.workshop, ...workshops]);
       setOwnerCredentials(payload.data.owner);
+      await loadBillingOverview();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao cadastrar a oficina';
       setLoadError(message);
@@ -345,6 +436,109 @@ export function AdminDashboardPage() {
     } finally {
       setIsCreating(false);
     }
+  }
+
+  function getWorkshopStatusLabel(workshop: Workshop): string {
+    if (workshop.status === 'deleted') return 'Excluída';
+    if (workshop.billingStatus === 'pending') return 'Pagamento pendente';
+    if (workshop.billingStatus === 'overdue') return 'Pagamento em atraso';
+    if (workshop.billingStatus === 'suspended') return 'Suspensa';
+    return 'Ativa';
+  }
+
+  async function updateWorkshopAccess(workshopId: string, status: 'active' | 'blocked') {
+    const token = await getAuthToken();
+    const response = await fetch(`/api/workshops/${workshopId}/access`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    const payload = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao atualizar acesso'));
+    }
+
+    await loadWorkshops();
+    await loadBillingOverview();
+  }
+
+  async function registerPayment(workshop: Workshop) {
+    const token = await getAuthToken();
+    const response = await fetch(`/api/workshops/${workshop.workshopId}/billing/payments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount: workshop.monthlyFee,
+        method: 'manual',
+      }),
+    });
+
+    const payload = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao registrar pagamento'));
+    }
+
+    await loadWorkshops();
+    await loadBillingOverview();
+  }
+
+  async function markInstallmentAsUnpaid(workshop: Workshop) {
+    const token = await getAuthToken();
+    const response = await fetch(`/api/workshops/${workshop.workshopId}/billing/mark-unpaid`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        reason: `Parcela da oficina ${workshop.name} marcada como não paga pelo root`,
+      }),
+    });
+
+    const payload = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao marcar parcela como não paga'));
+    }
+
+    await loadWorkshops();
+    await loadBillingOverview();
+  }
+
+  async function updateWorkshopDueDay(workshopId: string) {
+    const draftValue = Number(billingDueDayDrafts[workshopId] ?? '10');
+    const billingDueDay = Math.max(1, Math.min(28, Number.isNaN(draftValue) ? 10 : draftValue));
+    const token = await getAuthToken();
+    const response = await fetch(`/api/workshops/${workshopId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ billingDueDay }),
+    });
+
+    const payload = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao atualizar vencimento'));
+    }
+
+    await loadWorkshops();
+    await loadBillingOverview();
+  }
+
+  function getBillingStateLabel(state: WorkshopBillingOverview['workshops'][number]['billingState']): string {
+    if (state === 'due_soon') return 'A vencer';
+    if (state === 'overdue') return 'Vencida';
+    if (state === 'pending') return 'Pendente';
+    if (state === 'suspended') return 'Suspensa';
+    return 'Paga';
   }
 
   return (
@@ -417,6 +611,53 @@ export function AdminDashboardPage() {
         </Card>
       </div>
 
+      <Card title="Assinaturas">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{billingOverview?.summary.total ?? '...'}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pagas</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-700">{billingOverview?.summary.paid ?? '...'}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">A vencer</p>
+            <p className="mt-2 text-2xl font-bold text-amber-700">{billingOverview?.summary.dueSoon ?? '...'}</p>
+          </div>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Vencidas</p>
+            <p className="mt-2 text-2xl font-bold text-rose-700">{billingOverview?.summary.overdue ?? '...'}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suspensas</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{billingOverview?.summary.suspended ?? '...'}</p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90">
+          <div className="grid grid-cols-5 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <span>Oficina</span>
+            <span>Mensalidade</span>
+            <span>Vencimento</span>
+            <span>Status</span>
+            <span>Dias</span>
+          </div>
+          {(billingOverview?.workshops ?? []).map((item) => (
+            <div key={item.workshopId} className="grid grid-cols-5 gap-4 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0">
+              <span className="font-semibold text-slate-900">{item.name}</span>
+              <span>{formatBRL(item.monthlyFee)}</span>
+              <span>{formatBillingDate(item.billingDueAt)}</span>
+              <span>{getBillingStateLabel(item.billingState)}</span>
+              <span>{formatDueInDays(item.dueInDays)}</span>
+            </div>
+          ))}
+          {(billingOverview?.workshops ?? []).length === 0 ? (
+            <div className="px-4 py-6 text-sm text-slate-500">Nenhuma assinatura encontrada.</div>
+          ) : null}
+        </div>
+      </Card>
+
       <div className="grid gap-6">
         <Card title="Gestão de Oficinas">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -467,8 +708,53 @@ export function AdminDashboardPage() {
                       <h3 className="mt-2 text-lg font-bold text-slate-900">{workshop.name}</h3>
                       <p className="mt-2 text-sm text-slate-600">{workshop.address}</p>
                       <p className="mt-1 text-xs text-slate-500">{workshop.email}</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">Mensalidade: {formatBRL(workshop.monthlyFee)}</p>
+                      <p className="mt-1 text-xs text-slate-500">Dia de vencimento: todo dia {workshop.billingDueDay ?? 10}</p>
+                      <p className="mt-1 text-xs text-slate-500">Vencimento: {formatBillingDate(workshop.billingDueAt)}</p>
                     </div>
-                    <span className="soft-chip">{workshop.status}</span>
+                    <span className="soft-chip">{getWorkshopStatusLabel(workshop)}</span>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <label htmlFor={`billing-due-day-${workshop.workshopId}`} className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Alterar dia do vencimento
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id={`billing-due-day-${workshop.workshopId}`}
+                        type="number"
+                        min="1"
+                        max="28"
+                        step="1"
+                        value={billingDueDayDrafts[workshop.workshopId] ?? String(workshop.billingDueDay ?? 10)}
+                        onChange={(event) => setBillingDueDayDrafts((current) => ({
+                          ...current,
+                          [workshop.workshopId]: event.target.value,
+                        }))}
+                        className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopDueDay(workshop.workshopId)}>
+                        Salvar vencimento
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button type="button" variant="primary" size="sm" onClick={() => void registerPayment(workshop)}>
+                      Marcar parcela paga
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void markInstallmentAsUnpaid(workshop)}>
+                      Marcar parcela não paga
+                    </Button>
+                    {workshop.status === 'active' ? (
+                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopAccess(workshop.workshopId, 'blocked')}>
+                        Suspender
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopAccess(workshop.workshopId, 'active')}>
+                        Ativar manualmente
+                      </Button>
+                    )}
                   </div>
                 </Card>
               ))}

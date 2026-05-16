@@ -12,8 +12,12 @@
 }
 
 @layer base {
+	html {
+		@apply overflow-x-hidden;
+	}
+
 	body {
-		@apply bg-mecfix-page text-slate-900 antialiased;
+		@apply overflow-x-hidden bg-mecfix-page text-slate-900 antialiased;
 		background-image:
 			radial-gradient(circle at top left, rgba(255, 122, 0, 0.14), transparent 30%),
 			radial-gradient(circle at top right, rgba(15, 33, 63, 0.16), transparent 28%),
@@ -39,11 +43,11 @@
 
 @layer components {
 	.app-shell {
-		@apply min-h-screen;
+		@apply min-h-screen w-full overflow-x-hidden;
 	}
 
 	.app-frame {
-		@apply mx-auto w-full max-w-[1440px] px-2 py-0 sm:px-4 lg:px-8;
+		@apply mx-auto w-full max-w-[1440px] overflow-x-hidden px-3 py-0 sm:px-4 lg:px-8;
 	}
 
 	.glass-panel {

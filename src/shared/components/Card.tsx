@@ -9,10 +9,7 @@ export function Card({ title, children, className = '', ...props }: Readonly<Car
     <div className={`card ${className}`} {...props}>
       {title && (
         <div className="card-header">
-          <div>
-            <p className="section-title">Seção</p>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{title}</h2>
-          </div>
+          <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">{title}</h2>
         </div>
       )}
       {children}

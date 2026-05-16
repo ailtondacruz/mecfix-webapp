@@ -7,8 +7,17 @@ export interface Workshop {
   documentNumber: string;
   email: string;
   phone: string;
+  monthlyFee: number;
+  billingDueDay: number;
   logoUrl?: string;
-  status: 'active' | 'blocked';
+  status: 'active' | 'blocked' | 'deleted';
+  billingStatus: 'pending' | 'active' | 'overdue' | 'suspended';
+  billingDueAt: string;
+  lastPaymentAt?: string;
+  lastPaymentAmount?: number;
+  lastPaymentMethod?: 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'transferencia' | 'boleto' | 'manual';
+  suspendedAt?: string;
+  suspensionReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,9 +60,13 @@ export interface BudgetItem {
   type: 'service' | 'part';
 }
 
+export type BudgetStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
 export interface Budget {
   budgetId: string;
+  budgetNumber: string;
   workshopId: string;
+  shareToken: string;
   customerName: string;
   vehicleName: string;
   vehiclePlate: string;
@@ -62,7 +75,7 @@ export interface Budget {
   total: number;
   validityDays: number;
   validUntil: string;
-  status: 'draft' | 'sent' | 'approved' | 'rejected' | 'expired';
+  status: BudgetStatus;
   notes?: string;
   pdfUrl?: string;
   createdBy: string;
@@ -82,3 +95,72 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+// ── Financial module ────────────────────────────────────────────────
+export type EntryType = 'revenue' | 'expense';
+export type PaymentMethod = 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'transferencia' | 'boleto';
+
+export interface FinancialEntry {
+  entryId: string;
+  workshopId: string;
+  type: EntryType;
+  amount: number;
+  description: string;
+  category: string;
+  paymentMethod?: PaymentMethod;
+  date: string; // YYYY-MM-DD
+  budgetId?: string;
+  budgetNumber?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MonthlySummary {
+  month: number; // 1–12
+  year: number;
+  revenue: number;
+  expense: number;
+  balance: number;
+  entryCount: number;
+}
+
+export type WorkshopBillingState = 'paid' | 'due_soon' | 'overdue' | 'pending' | 'suspended';
+
+export interface WorkshopBillingPayment {
+  paymentId: string;
+  workshopId: string;
+  amount: number;
+  method: 'pix' | 'dinheiro' | 'cartao_debito' | 'cartao_credito' | 'transferencia' | 'boleto' | 'manual';
+  reference: string;
+  paidAt: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface WorkshopBillingView extends Workshop {
+  billingState: WorkshopBillingState;
+  dueInDays: number | null;
+}
+
+export interface WorkshopBillingSummary {
+  total: number;
+  paid: number;
+  dueSoon: number;
+  overdue: number;
+  pending: number;
+  suspended: number;
+}
+
+export interface WorkshopBillingOverview {
+  summary: WorkshopBillingSummary;
+  workshops: WorkshopBillingView[];
+}
+
+export interface WorkshopBillingDetails {
+  summary: WorkshopBillingSummary;
+  workshop: WorkshopBillingView;
+  recentPayments: WorkshopBillingPayment[];
+}
+
