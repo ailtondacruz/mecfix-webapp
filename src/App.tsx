@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './features/auth/components/AuthProvider';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
+import { WorkshopDetailsPage } from './features/admin/pages/WorkshopDetailsPage';
 import { BudgetsPage } from './features/workshop/budgets/pages/BudgetsPage';
 import { BudgetPublicPage } from './features/workshop/budgets/pages/BudgetPublicPage';
 import { CustomersPage } from './features/workshop/customers/pages/CustomersPage';
@@ -22,6 +23,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute requiredRoles={['admin', 'root']}>
             <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/workshops/:workshopId"
+        element={
+          <ProtectedRoute requiredRoles={['admin', 'root']}>
+            <WorkshopDetailsPage />
           </ProtectedRoute>
         }
       />

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentProps } from 'react';
-import { Layout, Card, Button } from '../../../shared';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, Layout } from '../../../shared';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { auth } from '../../../services/firebase';
 import type { Workshop, WorkshopBillingOverview } from '../../../shared';
@@ -81,18 +82,6 @@ async function readJsonSafely(response: Response): Promise<any> {
 
 function formatBRL(value: number | undefined): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
-}
-
-function formatDueInDays(value: number | null): string {
-  if (value === null) {
-    return '—';
-  }
-
-  if (value < 0) {
-    return `${Math.abs(value)} atrasado`;
-  }
-
-  return `${value} dia(s)`;
 }
 
 function formatBillingDate(value: string | undefined): string {
@@ -334,10 +323,9 @@ function CreateWorkshopModal({
 }
 
 export function AdminDashboardPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [billingOverview, setBillingOverview] = useState<WorkshopBillingOverview | null>(null);
-  const [billingDueDayDrafts, setBillingDueDayDrafts] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -345,52 +333,20 @@ export function AdminDashboardPage() {
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    void loadWorkshops();
     void loadBillingOverview();
   }, []);
 
-  function syncBillingDueDayDrafts(items: Workshop[]) {
-    setBillingDueDayDrafts(
-      Object.fromEntries(items.map((workshop) => [workshop.workshopId, String(workshop.billingDueDay ?? 10)])),
-    );
-  }
-
-  async function loadWorkshops() {
+  async function loadBillingOverview() {
     setIsLoading(true);
     setLoadError('');
 
     try {
-      const token = await getAuthToken();
-      const response = await fetch('/api/workshops', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const payload = await readJsonSafely(response);
-
-      if (!response.ok) {
-        throw new Error(
-          toSafeMessage(payload?.message || payload?.error, 'Falha ao carregar oficinas'),
-        );
-      }
-
-      const items = Array.isArray(payload?.data) ? payload.data : [];
-      setWorkshops(items);
-      syncBillingDueDayDrafts(items);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar oficinas');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function loadBillingOverview() {
-    try {
       const overview = await getBillingOverview();
       setBillingOverview(overview);
     } catch (error) {
-      setLoadError((current) => current || (error instanceof Error ? error.message : 'Falha ao carregar assinaturas'));
+      setLoadError(error instanceof Error ? error.message : 'Falha ao carregar assinaturas');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -425,8 +381,6 @@ export function AdminDashboardPage() {
         throw new Error('Resposta inválida do servidor ao cadastrar a oficina');
       }
 
-      setWorkshops((current) => [payload.data.workshop, ...current]);
-      syncBillingDueDayDrafts([payload.data.workshop, ...workshops]);
       setOwnerCredentials(payload.data.owner);
       await loadBillingOverview();
     } catch (error) {
@@ -436,101 +390,6 @@ export function AdminDashboardPage() {
     } finally {
       setIsCreating(false);
     }
-  }
-
-  function getWorkshopStatusLabel(workshop: Workshop): string {
-    if (workshop.status === 'deleted') return 'Excluída';
-    if (workshop.billingStatus === 'pending') return 'Pagamento pendente';
-    if (workshop.billingStatus === 'overdue') return 'Pagamento em atraso';
-    if (workshop.billingStatus === 'suspended') return 'Suspensa';
-    return 'Ativa';
-  }
-
-  async function updateWorkshopAccess(workshopId: string, status: 'active' | 'blocked') {
-    const token = await getAuthToken();
-    const response = await fetch(`/api/workshops/${workshopId}/access`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    const payload = await readJsonSafely(response);
-    if (!response.ok) {
-      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao atualizar acesso'));
-    }
-
-    await loadWorkshops();
-    await loadBillingOverview();
-  }
-
-  async function registerPayment(workshop: Workshop) {
-    const token = await getAuthToken();
-    const response = await fetch(`/api/workshops/${workshop.workshopId}/billing/payments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        amount: workshop.monthlyFee,
-        method: 'manual',
-      }),
-    });
-
-    const payload = await readJsonSafely(response);
-    if (!response.ok) {
-      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao registrar pagamento'));
-    }
-
-    await loadWorkshops();
-    await loadBillingOverview();
-  }
-
-  async function markInstallmentAsUnpaid(workshop: Workshop) {
-    const token = await getAuthToken();
-    const response = await fetch(`/api/workshops/${workshop.workshopId}/billing/mark-unpaid`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        reason: `Parcela da oficina ${workshop.name} marcada como não paga pelo root`,
-      }),
-    });
-
-    const payload = await readJsonSafely(response);
-    if (!response.ok) {
-      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao marcar parcela como não paga'));
-    }
-
-    await loadWorkshops();
-    await loadBillingOverview();
-  }
-
-  async function updateWorkshopDueDay(workshopId: string) {
-    const draftValue = Number(billingDueDayDrafts[workshopId] ?? '10');
-    const billingDueDay = Math.max(1, Math.min(28, Number.isNaN(draftValue) ? 10 : draftValue));
-    const token = await getAuthToken();
-    const response = await fetch(`/api/workshops/${workshopId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ billingDueDay }),
-    });
-
-    const payload = await readJsonSafely(response);
-    if (!response.ok) {
-      throw new Error(toSafeMessage(payload?.message || payload?.error, 'Erro ao atualizar vencimento'));
-    }
-
-    await loadWorkshops();
-    await loadBillingOverview();
   }
 
   function getBillingStateLabel(state: WorkshopBillingOverview['workshops'][number]['billingState']): string {
@@ -566,7 +425,7 @@ export function AdminDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="stat-label">Oficinas Cadastradas</p>
-              <h3 className="stat-value mt-2">{isLoading ? '...' : workshops.length}</h3>
+              <h3 className="stat-value mt-2">{isLoading ? '...' : billingOverview?.summary.total ?? 0}</h3>
             </div>
             <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
               Live
@@ -634,134 +493,88 @@ export function AdminDashboardPage() {
             <p className="mt-2 text-2xl font-bold text-slate-900">{billingOverview?.summary.suspended ?? '...'}</p>
           </div>
         </div>
-
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90">
-          <div className="grid grid-cols-5 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            <span>Oficina</span>
-            <span>Mensalidade</span>
-            <span>Vencimento</span>
-            <span>Status</span>
-            <span>Dias</span>
-          </div>
-          {(billingOverview?.workshops ?? []).map((item) => (
-            <div key={item.workshopId} className="grid grid-cols-5 gap-4 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0">
-              <span className="font-semibold text-slate-900">{item.name}</span>
-              <span>{formatBRL(item.monthlyFee)}</span>
-              <span>{formatBillingDate(item.billingDueAt)}</span>
-              <span>{getBillingStateLabel(item.billingState)}</span>
-              <span>{formatDueInDays(item.dueInDays)}</span>
-            </div>
-          ))}
-          {(billingOverview?.workshops ?? []).length === 0 ? (
-            <div className="px-4 py-6 text-sm text-slate-500">Nenhuma assinatura encontrada.</div>
-          ) : null}
-        </div>
       </Card>
 
-      <div className="grid gap-6">
-        <Card title="Gestão de Oficinas">
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="section-subtitle">Cadastre oficinas e o owner inicial sai pronto para login.</p>
-            </div>
-            <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-              + Nova Oficina
-            </Button>
+      <Card title="Gestão de Oficinas">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="section-subtitle">Cadastre oficinas e clique em uma linha para abrir os detalhes completos.</p>
           </div>
+          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+            + Nova Oficina
+          </Button>
+        </div>
 
-          {loadError ? (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-              {loadError}
+        {loadError ? (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            {loadError}
+          </div>
+        ) : null}
+
+        {ownerCredentials ? (
+          <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+            <p className="font-semibold">Owner criado com sucesso</p>
+            <p className="mt-2">E-mail: {ownerCredentials.email}</p>
+            <p>Senha temporária: {ownerCredentials.temporaryPassword}</p>
+            <p className="mt-2 text-xs text-emerald-700">
+              Anote essa senha agora. Depois, o owner deve trocar no primeiro acesso.
+            </p>
+          </div>
+        ) : null}
+
+        {!billingOverview?.workshops?.length && !isLoading ? (
+          <div className="empty-state">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+              <span className="text-2xl">🏁</span>
             </div>
-          ) : null}
-
-          {ownerCredentials ? (
-            <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-              <p className="font-semibold">Owner criado com sucesso</p>
-              <p className="mt-2">E-mail: {ownerCredentials.email}</p>
-              <p>Senha temporária: {ownerCredentials.temporaryPassword}</p>
-              <p className="mt-2 text-xs text-emerald-700">
-                Anote essa senha agora. Depois, o owner deve trocar no primeiro acesso.
-              </p>
+            <p className="text-lg font-semibold text-slate-900">Nenhuma oficina cadastrada ainda.</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Clique em Nova Oficina para criar a primeira unidade e gerar o owner inicial.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90">
+            <div className="hidden grid-cols-5 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 lg:grid">
+              <span>Oficina</span>
+              <span>Contato</span>
+              <span>Mensalidade</span>
+              <span>Vencimento</span>
+              <span>Status</span>
             </div>
-          ) : null}
-
-          {workshops.length === 0 && !isLoading ? (
-            <div className="empty-state">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-                <span className="text-2xl">🏁</span>
-              </div>
-              <p className="text-lg font-semibold text-slate-900">Nenhuma oficina cadastrada ainda.</p>
-              <p className="mt-2 text-sm text-slate-600">
-                Clique em Nova Oficina para criar a primeira unidade e gerar o owner inicial.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {workshops.map((workshop) => (
-                <Card key={workshop.workshopId} className="border border-slate-200 bg-white/90">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        {workshop.documentType?.toUpperCase() || 'DOC'}
-                      </p>
-                      <h3 className="mt-2 text-lg font-bold text-slate-900">{workshop.name}</h3>
-                      <p className="mt-2 text-sm text-slate-600">{workshop.address}</p>
-                      <p className="mt-1 text-xs text-slate-500">{workshop.email}</p>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">Mensalidade: {formatBRL(workshop.monthlyFee)}</p>
-                      <p className="mt-1 text-xs text-slate-500">Dia de vencimento: todo dia {workshop.billingDueDay ?? 10}</p>
-                      <p className="mt-1 text-xs text-slate-500">Vencimento: {formatBillingDate(workshop.billingDueAt)}</p>
-                    </div>
-                    <span className="soft-chip">{getWorkshopStatusLabel(workshop)}</span>
+            <div className="divide-y divide-slate-100">
+              {(billingOverview?.workshops ?? []).map((workshop) => (
+                <button
+                  key={workshop.workshopId}
+                  type="button"
+                  onClick={() => navigate(`/admin/workshops/${workshop.workshopId}`)}
+                  className="grid w-full grid-cols-1 gap-2 px-4 py-4 text-left transition hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 lg:grid-cols-5 lg:items-center lg:gap-4"
+                >
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">{workshop.name}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500 lg:hidden">Oficina</p>
                   </div>
-
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <label htmlFor={`billing-due-day-${workshop.workshopId}`} className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Alterar dia do vencimento
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id={`billing-due-day-${workshop.workshopId}`}
-                        type="number"
-                        min="1"
-                        max="28"
-                        step="1"
-                        value={billingDueDayDrafts[workshop.workshopId] ?? String(workshop.billingDueDay ?? 10)}
-                        onChange={(event) => setBillingDueDayDrafts((current) => ({
-                          ...current,
-                          [workshop.workshopId]: event.target.value,
-                        }))}
-                        className="w-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
-                      />
-                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopDueDay(workshop.workshopId)}>
-                        Salvar vencimento
-                      </Button>
-                    </div>
+                  <div>
+                    <p className="text-sm text-slate-700">{workshop.email}</p>
+                    <p className="text-xs text-slate-500 lg:hidden">Contato</p>
                   </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button type="button" variant="primary" size="sm" onClick={() => void registerPayment(workshop)}>
-                      Marcar parcela paga
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => void markInstallmentAsUnpaid(workshop)}>
-                      Marcar parcela não paga
-                    </Button>
-                    {workshop.status === 'active' ? (
-                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopAccess(workshop.workshopId, 'blocked')}>
-                        Suspender
-                      </Button>
-                    ) : (
-                      <Button type="button" variant="outline" size="sm" onClick={() => void updateWorkshopAccess(workshop.workshopId, 'active')}>
-                        Ativar manualmente
-                      </Button>
-                    )}
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{formatBRL(workshop.monthlyFee)}</p>
+                    <p className="text-xs text-slate-500 lg:hidden">Mensalidade</p>
                   </div>
-                </Card>
+                  <div>
+                    <p className="text-sm text-slate-700">{formatBillingDate(workshop.billingDueAt)}</p>
+                    <p className="text-xs text-slate-500 lg:hidden">Vencimento</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="soft-chip">{getBillingStateLabel(workshop.billingState)}</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 lg:hidden">Abrir</span>
+                  </div>
+                </button>
               ))}
             </div>
-          )}
-        </Card>
-      </div>
+          </div>
+        )}
+      </Card>
 
       <CreateWorkshopModal
         isOpen={isModalOpen}

@@ -9,7 +9,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -30,18 +30,22 @@ export function LoginPage() {
 
   const handleSubmit: React.ComponentProps<'form'>['onSubmit'] = (e) => {
     e.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
     setError('');
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     void (async () => {
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // AuthProvider vai detectar o login e redirecionar automaticamente via useEffect acima
+        // Mantemos o estado de envio ativo ate o redirecionamento via useEffect.
       } catch (err) {
         console.error('Login failed:', err);
         setError('Falha ao fazer login. Verifique e-mail e senha.');
-      } finally {
-        setIsLoading(false);
+        setIsSubmitting(false);
       }
     })();
   };
@@ -82,6 +86,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               label="E-mail"
+              disabled={isSubmitting}
               required
             />
 
@@ -91,6 +96,7 @@ export function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               label="Senha"
+              disabled={isSubmitting}
               required
             />
 
@@ -99,7 +105,7 @@ export function LoginPage() {
             <Button
               type="submit"
               variant="primary"
-              isLoading={isLoading}
+              isLoading={isSubmitting}
               className="w-full"
             >
               Entrar

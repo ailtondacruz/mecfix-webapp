@@ -7,8 +7,8 @@ import React, { useState, useEffect, type ComponentProps } from 'react';
 import { listBudgets } from '../budgets/services/budgets.service';
 import { listCustomers } from '../customers/services/customers.service';
 import { getMonthlyRevenue } from '../financials/services/financials.service';
-import { getMyBilling } from '../services/billing.service';
-import type { WorkshopBillingDetails } from '../../../shared';
+import { getMyBilling, getMyInstallments } from '../services/billing.service';
+import type { WorkshopBillingDetails, WorkshopBillingInstallment } from '../../../shared';
 
 interface CreateWorkshopModalProps {
   isOpen: boolean;
@@ -183,6 +183,7 @@ export function WorkshopDashboardPage() {
   const [customerCount, setCustomerCount] = useState<number | null>(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
   const [billingDetails, setBillingDetails] = useState<WorkshopBillingDetails | null>(null);
+  const [installments, setInstallments] = useState<WorkshopBillingInstallment[]>([]);
 
   useEffect(() => {
     if (!workshop) return;
@@ -191,6 +192,7 @@ export function WorkshopDashboardPage() {
     const now = new Date();
     void getMonthlyRevenue(now.getFullYear(), now.getMonth() + 1).then((value) => setMonthlyRevenue(value)).catch(() => setMonthlyRevenue(0));
     void getMyBilling().then((data) => setBillingDetails(data)).catch(() => setBillingDetails(null));
+    void getMyInstallments().then((data) => setInstallments(data)).catch(() => setInstallments([]));
   }, [workshop]);
 
   function getBillingLabel(state: WorkshopBillingDetails['workshop']['billingState']): string {
@@ -299,7 +301,7 @@ export function WorkshopDashboardPage() {
         {/* Cabeçalho da oficina + logo */}
         {workshop && (
           <Card>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               {workshop.logoUrl ? (
                 <img
                   src={workshop.logoUrl}
@@ -317,7 +319,7 @@ export function WorkshopDashboardPage() {
                 <p className="truncate text-xs text-slate-500">{workshop.email}</p>
               </div>
 
-              <label className="shrink-0 cursor-pointer">
+              <label className="cursor-pointer sm:shrink-0">
                 <span className={`btn-outline btn-sm inline-flex items-center gap-1 text-xs ${isUploadingLogo ? 'opacity-60 pointer-events-none' : ''}`}>
                   {getLogoButtonLabel(isUploadingLogo, Boolean(workshop.logoUrl))}
                 </span>
@@ -339,7 +341,7 @@ export function WorkshopDashboardPage() {
 
         {/* Stats */}
         {workshop && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Card className="space-y-1">
               <p className="text-xs font-semibold uppercase text-slate-500">Clientes</p>
               <p className="text-2xl font-bold text-slate-900">{customerCount ?? '…'}</p>
@@ -366,7 +368,7 @@ export function WorkshopDashboardPage() {
 
         {/* Navegação */}
         {workshop && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg" onClick={() => navigate('/workshop/customers')}>
               <div className="text-center">
                 <div className="mb-2 text-2xl">👥</div>
@@ -395,50 +397,55 @@ export function WorkshopDashboardPage() {
 
         {workshop && (
           <Card title="Minha assinatura">
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status atual</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-mecfix-orange px-3 py-1 text-xs font-semibold text-white">
-                    {billingDetails ? getBillingLabel(billingDetails.workshop.billingState) : '...'}
-                  </span>
-                  <span className="text-sm text-slate-600">
-                    Vencimento em {billingDetails ? formatWorkshopDueDate(billingDetails.workshop.billingDueAt) : '...'}
-                  </span>
-                </div>
-                <p className="mt-4 text-sm text-slate-700">
-                  Mensalidade: <strong>{formatWorkshopCurrency(workshop.monthlyFee)}</strong>
-                </p>
-                <p className="mt-2 text-sm text-slate-700">
-                  Dia do vencimento: <strong>todo dia {billingDetails?.workshop.billingDueDay ?? workshop.billingDueDay ?? 10}</strong>
-                </p>
-                <p className="mt-2 text-sm text-slate-700">
-                  Último pagamento: <strong>{formatWorkshopBillingDate(billingDetails?.workshop.lastPaymentAt)}</strong>
-                </p>
-                <p className="mt-2 text-sm text-slate-700">
-                  Dias para vencer: <strong>{formatWorkshopDueInDays(billingDetails?.workshop.dueInDays)}</strong>
-                </p>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status atual</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span className="rounded-full bg-mecfix-orange px-3 py-1 text-xs font-semibold text-white">
+                  {billingDetails ? getBillingLabel(billingDetails.workshop.billingState) : '...'}
+                </span>
+                <span className="text-sm text-slate-600">
+                  Vencimento em {billingDetails ? formatWorkshopDueDate(billingDetails.workshop.billingDueAt) : '...'}
+                </span>
               </div>
+              <p className="mt-4 text-sm text-slate-700">
+                Mensalidade: <strong>{formatWorkshopCurrency(workshop.monthlyFee)}</strong>
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                Dia do vencimento: <strong>todo dia {billingDetails?.workshop.billingDueDay ?? workshop.billingDueDay ?? 10}</strong>
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                Último pagamento: <strong>{formatWorkshopBillingDate(billingDetails?.workshop.lastPaymentAt)}</strong>
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                Dias para vencer: <strong>{formatWorkshopDueInDays(billingDetails?.workshop.dueInDays)}</strong>
+              </p>
+            </div>
+          </Card>
+        )}
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Histórico de pagamentos</p>
-                <div className="mt-4 space-y-3">
-                  {(billingDetails?.recentPayments ?? []).length === 0 ? (
-                    <p className="text-sm text-slate-500">Nenhum pagamento registrado ainda.</p>
-                  ) : (
-                    (billingDetails?.recentPayments ?? []).map((payment) => (
-                      <div key={payment.paymentId} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                          <span className="text-xs text-slate-500">{new Date(payment.paidAt).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-600">Método: {payment.method}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
+        {workshop && (
+          <Card title="Parcelas mensais">
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+              <div className="hidden grid-cols-5 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 sm:grid">
+                <span>Parcela</span>
+                <span>Vencimento</span>
+                <span>Valor</span>
+                <span>Status</span>
+                <span>Pagamento</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {installments.map((installment) => (
+                  <div key={installment.periodKey} className="grid grid-cols-1 gap-3 px-4 py-4 text-sm sm:grid-cols-5 sm:items-center sm:gap-4">
+                    <p className="font-semibold text-slate-900">Parcela {installment.periodKey}</p>
+                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Vencimento: </span>{formatWorkshopDueDate(installment.dueAt)}</p>
+                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Valor: </span>{formatWorkshopCurrency(installment.amount)}</p>
+                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Status: </span>{installment.statusLabel ?? installment.status}</p>
+                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Pagamento: </span>{installment.paidAt ? formatWorkshopBillingDate(installment.paidAt) : 'Não pago'}</p>
+                  </div>
+                ))}
+                {installments.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-slate-500">Nenhuma parcela registrada ainda.</div>
+                ) : null}
               </div>
             </div>
           </Card>
