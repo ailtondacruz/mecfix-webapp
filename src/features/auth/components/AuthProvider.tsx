@@ -1,25 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../../../services/firebase';
+import { AuthContext, readJsonSafely } from '../../../shared';
 import type { User, Workshop } from '../../../shared';
-import { AuthContext } from '../../../shared';
 
 interface AuthProviderProps {
   children: ReactNode;
-}
-
-async function readJsonSafely(response: Response): Promise<any> {
-  const text = await response.text();
-
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 export function AuthProvider({ children }: Readonly<AuthProviderProps>) {

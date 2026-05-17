@@ -1,21 +1,22 @@
-import { Layout, Button, Card } from '../../../shared';
+import {
+  Layout,
+  Button,
+  Card,
+  CreateWorkshopModal,
+  readJsonSafely,
+  type CreateWorkshopPayload,
+  type WorkshopBillingDetails,
+  type WorkshopBillingInstallment,
+} from '../../../shared';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { auth, storage } from '../../../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
-import React, { useState, useEffect, type ComponentProps } from 'react';
+import React, { useState, useEffect } from 'react';
 import { listBudgets } from '../budgets/services/budgets.service';
 import { listCustomers } from '../customers/services/customers.service';
 import { getMonthlyRevenue } from '../financials/services/financials.service';
 import { getMyBilling, getMyInstallments } from '../services/billing.service';
-import type { WorkshopBillingDetails, WorkshopBillingInstallment } from '../../../shared';
-
-interface CreateWorkshopModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: { name: string; email: string; phone: string }) => Promise<void>;
-}
-
 
 function getLogoButtonLabel(isUploading: boolean, hasLogo: boolean): string {
   if (isUploading) return 'Enviando...';
@@ -65,118 +66,11 @@ function formatWorkshopCurrency(value: number | undefined): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
 }
 
-async function readJsonSafely(response: Response): Promise<any> {
-  const text = await response.text();
-
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-function CreateWorkshopModal({ isOpen, onClose, onSubmit }: Readonly<CreateWorkshopModalProps>) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
-
-  if (!isOpen) return null;
-
-  const handleSubmit: ComponentProps<'form'>['onSubmit'] = (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    void (async () => {
-      try {
-        await onSubmit(formData);
-        setFormData({ name: '', email: '', phone: '' });
-        onClose();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao criar oficina');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Nova Oficina</h2>
-          <p className="mt-1 text-sm text-slate-600">Preencha os dados da sua oficina</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="workshop-name-modal" className="block text-sm font-medium text-slate-900">Nome da Oficina</label>
-            <input
-              id="workshop-name-modal"
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: Oficina João"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="workshop-email-modal" className="block text-sm font-medium text-slate-900">E-mail</label>
-            <input
-              id="workshop-email-modal"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="contato@oficina.com"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="workshop-phone-modal" className="block text-sm font-medium text-slate-900">Telefone</label>
-            <input
-              id="workshop-phone-modal"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="(11) 99999-9999"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 placeholder-slate-400 focus:border-mecfix-orange focus:outline-none focus:ring-1 focus:ring-mecfix-orange"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-center text-sm font-medium text-red-700">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancelar
-            </Button>
-            <Button variant="primary" type="submit" isLoading={isLoading} className="flex-1">
-              Criar
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
-}
-
 export function WorkshopDashboardPage() {
   const { workshop, refreshWorkshop } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [workshops, setWorkshops] = useState<any[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState('');
   const [budgetCount, setBudgetCount] = useState<number | null>(null);
@@ -250,7 +144,9 @@ export function WorkshopDashboardPage() {
     })();
   };
 
-  const handleCreateWorkshop = async (data: { name: string; email: string; phone: string }) => {
+  const handleCreateWorkshop = async (data: CreateWorkshopPayload) => {
+    setIsCreating(true);
+
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) {
@@ -272,12 +168,14 @@ export function WorkshopDashboardPage() {
         throw new Error(result?.message || result?.error || 'Erro ao criar oficina');
       }
 
-      if (!result?.data) {
-        throw new Error('Resposta vazia ao criar oficina');
+      if (!result?.data?.workshop) {
+        throw new Error('Resposta inválida do servidor ao criar oficina');
       }
-      setWorkshops([...workshops, result.data]);
+
     } catch (error) {
       throw error instanceof Error ? error : new Error('Erro ao criar oficina');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -454,6 +352,7 @@ export function WorkshopDashboardPage() {
 
       <CreateWorkshopModal
         isOpen={isModalOpen}
+        isSubmitting={isCreating}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateWorkshop}
       />

@@ -41,16 +41,6 @@ export interface Customer {
   createdAt: Date;
 }
 
-export interface Vehicle {
-  vehicleId: string;
-  workshopId: string;
-  customerId: string;
-  plate: string;
-  model: string;
-  year: number;
-  createdAt: Date;
-}
-
 export interface BudgetItem {
   id: string;
   description: string;

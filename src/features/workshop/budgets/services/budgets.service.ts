@@ -1,4 +1,4 @@
-import { auth } from '../../../../services/firebase';
+import { getAuthToken, readJsonSafely } from '../../../../shared';
 import type { Budget } from '../../../../shared';
 
 export interface BudgetLineInput {
@@ -29,29 +29,6 @@ export interface BudgetMonthlyStats {
   pending: number;
   approved: number;
   approvedValue: number;
-}
-
-async function getAuthToken(): Promise<string> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error('Usuário não autenticado');
-  }
-
-  return currentUser.getIdToken();
-}
-
-async function readJsonSafely(response: Response): Promise<any> {
-  const text = await response.text();
-
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }
 
 export async function listBudgets(filters: ListBudgetsFilters = {}): Promise<Budget[]> {

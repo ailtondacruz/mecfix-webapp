@@ -3,14 +3,11 @@ import { useAuth } from '../hooks/useAuth';
 import type { User } from '../types';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRoles?: User['role'][];
+  readonly children: React.ReactNode;
+  readonly requiredRoles?: User['role'][];
 }
 
-export function ProtectedRoute({
-  children,
-  requiredRoles,
-}: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRoles }: Readonly<ProtectedRouteProps>) {
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
@@ -19,13 +16,14 @@ export function ProtectedRoute({
 
   if (requiredRoles && user && !requiredRoles.includes(user.role)) {
     // Redireciona para dashboard apropriado baseado no role atual
-    const dashboards = {
+    const dashboards: Record<User['role'], string> = {
+      root: '/admin',
       admin: '/admin',
       owner: '/workshop',
       mechanic: '/workshop',
       attendant: '/workshop',
     };
-    const targetDashboard = dashboards[user.role] || '/auth/login';
+    const targetDashboard = dashboards[user.role];
     return <Navigate to={targetDashboard} replace />;
   }
 

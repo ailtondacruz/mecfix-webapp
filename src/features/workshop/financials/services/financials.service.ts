@@ -1,4 +1,4 @@
-import { auth } from '../../../../services/firebase';
+import { getAuthToken } from '../../../../shared';
 import type { FinancialEntry, MonthlySummary } from '../../../../shared';
 
 export interface CreateEntryInput {
@@ -21,12 +21,6 @@ export interface UpdateEntryInput {
   date?: string;
   paymentMethod?: string;
   notes?: string;
-}
-
-async function getAuthToken(): Promise<string> {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Usuário não autenticado');
-  return user.getIdToken();
 }
 
 export async function getAnnualSummary(year: number): Promise<MonthlySummary[]> {

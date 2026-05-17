@@ -42,7 +42,6 @@ export const ROUTES = {
   
   WORKSHOP: '/workshop',
   CUSTOMERS: '/workshop/customers',
-  VEHICLES: '/workshop/vehicles',
   BUDGETS: '/workshop/budgets',
   FINANCIALS: '/workshop/financials',
 } as const;
@@ -60,9 +59,6 @@ export const API_ENDPOINTS = {
   
   CUSTOMERS: (workshopId: string) => `/api/workshops/${workshopId}/customers`,
   CUSTOMERS_BY_ID: (workshopId: string, customerId: string) => `/api/workshops/${workshopId}/customers/${customerId}`,
-  
-  VEHICLES: (workshopId: string) => `/api/workshops/${workshopId}/vehicles`,
-  VEHICLES_BY_ID: (workshopId: string, vehicleId: string) => `/api/workshops/${workshopId}/vehicles/${vehicleId}`,
   
   BUDGETS: '/api/budgets',
   BUDGETS_BY_ID: (budgetId: string) => `/api/budgets/${budgetId}`,
