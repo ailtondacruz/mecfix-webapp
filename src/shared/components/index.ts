@@ -1,3 +1,4 @@
+export { AppVersionBadge } from './AppVersionBadge';
 export { Button } from './Button';
 export { Card } from './Card';
 export { CurrencyInput } from './CurrencyInput';

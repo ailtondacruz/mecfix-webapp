@@ -20,6 +20,9 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     name: Build & Deploy to Firebase Hosting
@@ -29,13 +32,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # ── Build ────────────────────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -45,6 +48,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_APP_COMMIT_SHA:                 ${{ github.sha }}
           VITE_FIREBASE_API_KEY:               ${{ secrets.FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN:            mecfix-f6458.firebaseapp.com
           VITE_FIREBASE_PROJECT_ID:             mecfix-f6458

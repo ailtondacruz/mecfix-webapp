@@ -8,7 +8,7 @@ import { BudgetPublicPage } from './features/workshop/budgets/pages/BudgetPublic
 import { CustomersPage } from './features/workshop/customers/pages/CustomersPage';
 import { WorkshopDashboardPage } from './features/workshop/pages/WorkshopDashboardPage';
 import { FinancialsPage } from './features/workshop/financials/pages/FinancialsPage';
-import { ProtectedRoute } from './shared';
+import { AppVersionBadge, ProtectedRoute } from './shared';
 
 function AppRoutes() {
   return (
@@ -83,6 +83,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <AppVersionBadge />
       </AuthProvider>
     </BrowserRouter>
   );
