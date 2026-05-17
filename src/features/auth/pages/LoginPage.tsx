@@ -23,7 +23,7 @@ export function LoginPage() {
         mechanic: '/workshop',
         attendant: '/workshop',
       };
-      const targetDashboard = dashboards[user.role as keyof typeof dashboards] || '/admin';
+      const targetDashboard = dashboards[user.role] || '/admin';
       navigate(targetDashboard, { replace: true });
     }
   }, [user, navigate]);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button, Card, Layout } from '../../../shared';
 import type { WorkshopBillingDetails, WorkshopBillingInstallment } from '../../../shared';
@@ -88,6 +88,25 @@ export function WorkshopDetailsPage() {
   }
 
   const workshop = details?.workshop ?? null;
+  let workshopContent: ReactNode;
+
+  if (isLoading) {
+    workshopContent = <div className="py-10 text-center text-slate-500">Carregando oficina...</div>;
+  } else if (workshop) {
+    workshopContent = (
+      <div>
+        <p className="section-subtitle">
+          {workshop.documentType.toUpperCase()} {workshop.documentNumber}
+        </p>
+        <h1 className="mt-2 text-3xl font-bold text-slate-900">{workshop.name}</h1>
+        <p className="mt-3 text-sm text-slate-600">{workshop.address}</p>
+        <p className="mt-1 text-sm text-slate-600">{workshop.email}</p>
+        <p className="mt-1 text-sm text-slate-600">{workshop.phone || 'Sem telefone cadastrado'}</p>
+      </div>
+    );
+  } else {
+    workshopContent = <div className="py-10 text-center text-slate-500">Oficina não encontrada.</div>;
+  }
 
   return (
     <Layout title="Detalhe da Oficina" backTo="/admin">
@@ -98,23 +117,7 @@ export function WorkshopDetailsPage() {
           </div>
         ) : null}
 
-        <Card>
-          {isLoading ? (
-            <div className="py-10 text-center text-slate-500">Carregando oficina...</div>
-          ) : workshop ? (
-            <div>
-              <p className="section-subtitle">
-                {workshop.documentType.toUpperCase()} {workshop.documentNumber}
-              </p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900">{workshop.name}</h1>
-              <p className="mt-3 text-sm text-slate-600">{workshop.address}</p>
-              <p className="mt-1 text-sm text-slate-600">{workshop.email}</p>
-              <p className="mt-1 text-sm text-slate-600">{workshop.phone || 'Sem telefone cadastrado'}</p>
-            </div>
-          ) : (
-            <div className="py-10 text-center text-slate-500">Oficina não encontrada.</div>
-          )}
-        </Card>
+        <Card>{workshopContent}</Card>
 
         <Card title="Parcelas mensais">
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
