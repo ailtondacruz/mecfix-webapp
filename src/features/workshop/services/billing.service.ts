@@ -1,4 +1,4 @@
-import { getAuthToken, readJsonSafely } from '../../../shared';
+import { buildHttpError, getAuthToken, readJsonSafely } from '../../../shared';
 import type { WorkshopBillingDetails, WorkshopBillingInstallment } from '../../../shared';
 
 export async function getMyBilling(): Promise<WorkshopBillingDetails> {
@@ -11,7 +11,7 @@ export async function getMyBilling(): Promise<WorkshopBillingDetails> {
 
   const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao carregar assinatura');
+    throw await buildHttpError(response, 'Falha ao carregar assinatura.', 'WORKSHOP-BILLING-FETCH');
   }
 
   return payload.data as WorkshopBillingDetails;
@@ -27,7 +27,7 @@ export async function getMyInstallments(): Promise<WorkshopBillingInstallment[]>
 
   const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao carregar parcelas');
+    throw await buildHttpError(response, 'Falha ao carregar parcelas.', 'WORKSHOP-INSTALLMENTS-FETCH');
   }
 
   return Array.isArray(payload?.data) ? payload.data as WorkshopBillingInstallment[] : [];

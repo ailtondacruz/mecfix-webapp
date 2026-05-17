@@ -1,4 +1,4 @@
-import { getAuthToken, readJsonSafely } from '../../../shared';
+import { buildHttpError, getAuthToken, readJsonSafely } from '../../../shared';
 import type { WorkshopBillingDetails, WorkshopBillingOverview } from '../../../shared';
 
 export async function getBillingOverview(): Promise<WorkshopBillingOverview> {
@@ -11,7 +11,7 @@ export async function getBillingOverview(): Promise<WorkshopBillingOverview> {
 
   const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao carregar assinaturas');
+    throw await buildHttpError(response, 'Falha ao carregar assinaturas.', 'BILLING-OVERVIEW-FETCH');
   }
 
   return payload.data as WorkshopBillingOverview;
@@ -27,7 +27,7 @@ export async function getWorkshopBillingDetails(workshopId: string): Promise<Wor
 
   const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao carregar detalhes da oficina');
+    throw await buildHttpError(response, 'Falha ao carregar detalhes da oficina.', 'BILLING-DETAILS-FETCH');
   }
 
   return payload.data as WorkshopBillingDetails;
@@ -42,9 +42,8 @@ export async function markInstallmentAsPaid(workshopId: string, periodKey: strin
     },
   });
 
-  const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao marcar parcela como paga');
+    throw await buildHttpError(response, 'Falha ao marcar parcela como paga.', 'BILLING-INSTALLMENT-PAY');
   }
 }
 
@@ -57,8 +56,7 @@ export async function markInstallmentAsUnpaid(workshopId: string, periodKey: str
     },
   });
 
-  const payload = await readJsonSafely(response);
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'Falha ao marcar parcela como não paga');
+    throw await buildHttpError(response, 'Falha ao marcar parcela como nao paga.', 'BILLING-INSTALLMENT-UNPAY');
   }
 }

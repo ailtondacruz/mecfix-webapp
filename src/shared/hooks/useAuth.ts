@@ -4,10 +4,12 @@ import type { User, Workshop } from '../types';
 interface AuthContextType {
   user: User | null;
   workshop: Workshop | null;
+  authError: string;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshWorkshop: () => Promise<void>;
+  clearAuthError: () => void;
   isAuthenticated: boolean;
 }
 
