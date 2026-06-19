@@ -6,6 +6,7 @@ import {
   getWorkshopBillingDetails,
   markInstallmentAsPaid,
   markInstallmentAsUnpaid,
+  resetOwnerPassword,
 } from '../services/billing.service';
 
 function formatBRL(value: number | undefined): string {
@@ -31,6 +32,10 @@ export function WorkshopDetailsPage() {
   const [installments, setInstallments] = useState<WorkshopBillingInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetCredentials, setResetCredentials] = useState<{ email: string; temporaryPassword: string } | null>(null);
+  const [isResetPasswordVisible, setIsResetPasswordVisible] = useState(false);
+  const [isResetPasswordCopied, setIsResetPasswordCopied] = useState(false);
   const [error, setError] = useState('');
 
   async function refreshWorkshop() {
@@ -87,6 +92,36 @@ export function WorkshopDetailsPage() {
     }
   }
 
+  async function handleResetPassword() {
+    if (!workshopId) return;
+
+    setIsResettingPassword(true);
+    setError('');
+
+    try {
+      const credentials = await resetOwnerPassword(workshopId);
+      setResetCredentials(credentials);
+      setIsResetPasswordVisible(false);
+      setIsResetPasswordCopied(false);
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : 'Falha ao resetar a senha');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  }
+
+  async function copyResetPassword(): Promise<void> {
+    if (!resetCredentials?.temporaryPassword) return;
+
+    try {
+      await navigator.clipboard.writeText(resetCredentials.temporaryPassword);
+      setIsResetPasswordCopied(true);
+      globalThis.setTimeout(() => setIsResetPasswordCopied(false), 2500);
+    } catch {
+      setError('Não foi possível copiar a senha. Copie manualmente.');
+    }
+  }
+
   const workshop = details?.workshop ?? null;
   let workshopContent: ReactNode;
 
@@ -102,6 +137,25 @@ export function WorkshopDetailsPage() {
         <p className="mt-3 text-sm text-slate-600">{workshop.address}</p>
         <p className="mt-1 text-sm text-slate-600">{workshop.email}</p>
         <p className="mt-1 text-sm text-slate-600">{workshop.phone || 'Sem telefone cadastrado'}</p>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Login do Owner</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">
+            {details?.ownerEmail || 'Email não disponível'}
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void handleResetPassword()}
+            isLoading={isResettingPassword}
+          >
+            Resetar senha do owner
+          </Button>
+        </div>
       </div>
     );
   } else {
@@ -114,6 +168,37 @@ export function WorkshopDetailsPage() {
         {error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
             {error}
+          </div>
+        ) : null}
+
+        {resetCredentials ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <p className="font-semibold">Senha do owner resetada com sucesso</p>
+            <p className="mt-2">E-mail: <strong>{resetCredentials.email}</strong></p>
+            <p>
+              Nova senha temporária:{' '}
+              <strong>
+                {isResetPasswordVisible ? resetCredentials.temporaryPassword : `${resetCredentials.temporaryPassword.slice(0, 2)}******`}
+              </strong>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsResetPasswordVisible((v) => !v)}
+              >
+                {isResetPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void copyResetPassword()}
+              >
+                {isResetPasswordCopied ? 'Copiado!' : 'Copiar senha'}
+              </Button>
+            </div>
           </div>
         ) : null}
 

@@ -154,6 +154,7 @@ export interface WorkshopBillingDetails {
   recentPayments: WorkshopBillingPayment[];
   installments?: WorkshopBillingInstallment[];
   currentInstallment?: WorkshopBillingInstallment | null;
+  ownerEmail?: string;
 }
 
 export interface WorkshopBillingInstallmentAction {

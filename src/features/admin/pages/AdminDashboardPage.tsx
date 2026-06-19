@@ -29,6 +29,7 @@ interface CreateWorkshopResponse {
     owner: WorkshopOwnerCredentials;
   };
   message?: string;
+  error?: string;
 }
 
 function toSafeMessage(value: unknown, fallback: string): string {
@@ -56,6 +57,14 @@ function formatBillingDate(value: string | undefined): string {
   return date.toLocaleDateString('pt-BR');
 }
 
+function maskTemporaryPassword(password: string): string {
+  if (!password) {
+    return '';
+  }
+
+  return `${password.slice(0, 2)}******`;
+}
+
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -65,10 +74,17 @@ export function AdminDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [ownerCredentials, setOwnerCredentials] = useState<WorkshopOwnerCredentials | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [isOwnerPasswordVisible, setIsOwnerPasswordVisible] = useState(false);
+  const [isOwnerPasswordCopied, setIsOwnerPasswordCopied] = useState(false);
 
   useEffect(() => {
     void loadBillingOverview();
   }, []);
+
+  useEffect(() => {
+    setIsOwnerPasswordVisible(false);
+    setIsOwnerPasswordCopied(false);
+  }, [ownerCredentials?.userId]);
 
   async function loadBillingOverview() {
     setIsLoading(true);
@@ -130,6 +146,20 @@ export function AdminDashboardPage() {
     if (state === 'pending') return 'Pendente';
     if (state === 'suspended') return 'Suspensa';
     return 'Paga';
+  }
+
+  async function copyTemporaryPassword(): Promise<void> {
+    if (!ownerCredentials?.temporaryPassword) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(ownerCredentials.temporaryPassword);
+      setIsOwnerPasswordCopied(true);
+      globalThis.setTimeout(() => setIsOwnerPasswordCopied(false), 2500);
+    } catch {
+      setLoadError('Nao foi possivel copiar a senha. Copie manualmente.');
+    }
   }
 
   return (
@@ -247,7 +277,32 @@ export function AdminDashboardPage() {
           <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
             <p className="font-semibold">Owner criado com sucesso</p>
             <p className="mt-2">E-mail: {ownerCredentials.email}</p>
-            <p>Senha temporária: {ownerCredentials.temporaryPassword}</p>
+            <p>
+              Senha temporaria:{' '}
+              <strong>
+                {isOwnerPasswordVisible
+                  ? ownerCredentials.temporaryPassword
+                  : maskTemporaryPassword(ownerCredentials.temporaryPassword)}
+              </strong>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsOwnerPasswordVisible((current) => !current)}
+              >
+                {isOwnerPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void copyTemporaryPassword()}
+              >
+                {isOwnerPasswordCopied ? 'Senha copiada' : 'Copiar senha'}
+              </Button>
+            </div>
             <p className="mt-2 text-xs text-emerald-700">
               Anote essa senha agora. Depois, o owner deve trocar no primeiro acesso.
             </p>

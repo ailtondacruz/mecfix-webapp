@@ -33,6 +33,23 @@ export async function getWorkshopBillingDetails(workshopId: string): Promise<Wor
   return payload.data as WorkshopBillingDetails;
 }
 
+export async function resetOwnerPassword(workshopId: string): Promise<{ email: string; temporaryPassword: string }> {
+  const token = await getAuthToken();
+  const response = await fetch(`/api/workshops/${workshopId}/owner/reset-password`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const payload = await readJsonSafely(response);
+  if (!response.ok) {
+    throw await buildHttpError(response, 'Falha ao resetar a senha do owner.', 'OWNER-RESET-PASSWORD');
+  }
+
+  return payload.data as { email: string; temporaryPassword: string };
+}
+
 export async function markInstallmentAsPaid(workshopId: string, periodKey: string): Promise<void> {
   const token = await getAuthToken();
   const response = await fetch(`/api/workshops/${workshopId}/billing/installments/${periodKey}/pay`, {

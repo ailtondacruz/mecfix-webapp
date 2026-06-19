@@ -115,6 +115,15 @@ export function LoginPage() {
           <div className="mt-6 text-center text-sm text-slate-600">
             <p>Sem conta? Entre em contato conosco para comecar.</p>
           </div>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-700">Seguranca do acesso</p>
+            <ul className="mt-2 space-y-1 text-xs text-slate-600">
+              <li>Acesse somente os dominios oficiais mecfix-f6458.firebaseapp.com ou mecfix-f6458.web.app.</li>
+              <li>Nunca compartilhe sua senha por e-mail, chat ou WhatsApp.</li>
+              <li>Se suspeitar de fraude, contate suporte@mecfix.com antes de continuar.</li>
+            </ul>
+          </div>
         </Card>
       </div>
     </div>
