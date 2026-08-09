@@ -199,7 +199,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
   const [error, setError] = useState('');
 
   const total = useMemo(
-    () => form.items.reduce((s, item) => s + item.unitPrice / 100, 0),
+    () => form.items.reduce((s, item) => s + item.unitPrice, 0),
     [form.items],
   );
 
@@ -221,7 +221,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
         items: editingBudget.items.map(item => ({
           id: item.id ?? `item-${Date.now()}`,
           description: item.description,
-          unitPrice: Math.round(item.unitPrice * 100),
+          unitPrice: item.unitPrice,
           type: item.type,
         })),
       });
@@ -259,7 +259,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
       if (!form.vehiclePlate.trim()) throw new Error('Informe a placa');
 
       const items = form.items
-        .map(item => ({ description: item.description.trim(), unitPrice: item.unitPrice / 100, type: item.type }))
+        .map(item => ({ description: item.description.trim(), unitPrice: item.unitPrice, type: item.type }))
         .filter(item => item.description && item.unitPrice >= 0);
 
       if (items.length === 0) throw new Error('Adicione pelo menos um item com descrição e valor');
@@ -352,7 +352,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button type="button" aria-label="Fechar" className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex max-h-[96vh] w-full flex-col rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+      <div className="relative flex max-h-[96vh] w-full flex-col rounded-t-2xl bg-white shadow-2xl sm:max-w-3xl sm:rounded-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -461,7 +461,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
                 </button>
               </div>
               <div className="overflow-hidden rounded-xl border border-slate-200">
-                <div className="hidden grid-cols-[1fr_90px_96px_32px] gap-2 bg-slate-50 px-3 py-1.5 sm:grid">
+                <div className="hidden grid-cols-[1fr_120px_130px_32px] gap-2 bg-slate-50 px-3 py-1.5 sm:grid">
                   <span className="text-xs font-semibold text-slate-400">DESCRIÇÃO</span>
                   <span className="text-xs font-semibold text-slate-400">TIPO</span>
                   <span className="text-xs font-semibold text-slate-400">VALOR</span>
@@ -471,7 +471,7 @@ function BudgetFormModal({ isOpen, editingBudget, workshopName, onClose, onCreat
                   {form.items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-1.5 px-3 py-2 sm:grid sm:grid-cols-[1fr_90px_96px_32px] sm:items-center sm:gap-2 sm:py-1.5"
+                      className="flex flex-col gap-1.5 px-3 py-2 sm:grid sm:grid-cols-[1fr_120px_130px_32px] sm:items-center sm:gap-2 sm:py-1.5"
                     >
                       <div className="flex items-center gap-1">
                         <input

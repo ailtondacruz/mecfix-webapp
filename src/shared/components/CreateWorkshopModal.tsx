@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react';
 import { Button } from './Button';
 import { Card } from './Card';
+import { maskDocument, maskPhone, unmaskNumber } from '../utils/masks';
 
 export interface CreateWorkshopPayload {
   name: string;
@@ -76,6 +77,8 @@ export function CreateWorkshopModal({
       try {
         await onSubmit({
           ...formState,
+          documentNumber: unmaskNumber(formState.documentNumber),
+          phone: unmaskNumber(formState.phone),
           monthlyFee: Number(formState.monthlyFee),
           billingDueDay: Number(formState.billingDueDay),
         });
@@ -158,9 +161,10 @@ export function CreateWorkshopModal({
             <input
               id="workshop-document-number"
               value={formState.documentNumber}
-              onChange={(event) => setFormState({ ...formState, documentNumber: event.target.value })}
+              onChange={(event) => setFormState({ ...formState, documentNumber: maskDocument(event.target.value, formState.documentType) })}
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
-              placeholder="Somente numeros"
+              placeholder={formState.documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0001-00'}
+              inputMode="numeric"
               required
             />
           </div>
@@ -183,25 +187,27 @@ export function CreateWorkshopModal({
             <input
               id="workshop-phone"
               value={formState.phone}
-              onChange={(event) => setFormState({ ...formState, phone: event.target.value })}
+              onChange={(event) => setFormState({ ...formState, phone: maskPhone(event.target.value) })}
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
               placeholder="(11) 99999-9999"
+              inputMode="numeric"
             />
           </div>
 
           <div>
             <label htmlFor="workshop-monthly-fee" className="mb-2 block text-sm font-semibold text-slate-700">Valor mensal</label>
-            <input
-              id="workshop-monthly-fee"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formState.monthlyFee}
-              onChange={(event) => setFormState({ ...formState, monthlyFee: event.target.value })}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
-              placeholder="99.90"
-              required
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-medium text-slate-500">R$</span>
+              <input
+                id="workshop-monthly-fee"
+                inputMode="numeric"
+                value={formState.monthlyFee === '0' ? '' : formState.monthlyFee}
+                onChange={(event) => setFormState({ ...formState, monthlyFee: unmaskNumber(event.target.value) || '0' })}
+                className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-slate-900 outline-none transition focus:border-mecfix-orange focus:ring-2 focus:ring-mecfix-orange/20"
+                placeholder="99"
+                required
+              />
+            </div>
           </div>
 
           <div>

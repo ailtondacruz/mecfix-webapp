@@ -12,8 +12,15 @@ interface LayoutProps {
 
 export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
   const navigate = useNavigate();
-  const { isAuthenticated, logout, workshop } = useAuth();
+  const { isAuthenticated, logout, workshop, user } = useAuth();
   const isBillingBlocked = workshop?.status === 'blocked';
+
+  const userInitials = (user?.name || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('') || 'U';
 
   let billingLabel = '';
   if (workshop?.billingStatus === 'pending') {
@@ -72,6 +79,17 @@ export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
 
             <div className="flex shrink-0 items-center gap-2">
               {rightContent}
+              {user ? (
+                <div className="hidden items-center gap-2.5 rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 shadow-sm sm:flex">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-mecfix-orange text-xs font-bold text-white">
+                    {userInitials}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold leading-tight text-slate-900">{user.name}</p>
+                    <p className="text-[11px] leading-tight text-slate-400">{user.email}</p>
+                  </div>
+                </div>
+              ) : null}
               {isAuthenticated ? (
                 <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
                   Sair

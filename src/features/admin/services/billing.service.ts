@@ -50,30 +50,65 @@ export async function resetOwnerPassword(workshopId: string): Promise<{ email: s
   return payload.data as { email: string; temporaryPassword: string };
 }
 
-export async function markInstallmentAsPaid(workshopId: string, periodKey: string): Promise<void> {
+export async function markAsPaid(workshopId: string): Promise<void> {
   const token = await getAuthToken();
-  const response = await fetch(`/api/workshops/${workshopId}/billing/installments/${periodKey}/pay`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await fetch(`/api/workshops/${workshopId}/billing/pay`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!response.ok) {
-    throw await buildHttpError(response, 'Falha ao marcar parcela como paga.', 'BILLING-INSTALLMENT-PAY');
+    throw await buildHttpError(response, 'Falha ao marcar como pago.', 'BILLING-MARK-PAID');
   }
 }
 
-export async function markInstallmentAsUnpaid(workshopId: string, periodKey: string): Promise<void> {
+export async function markAsUnpaid(workshopId: string): Promise<void> {
   const token = await getAuthToken();
-  const response = await fetch(`/api/workshops/${workshopId}/billing/installments/${periodKey}/unpay`, {
-    method: 'PATCH',
+  const response = await fetch(`/api/workshops/${workshopId}/billing/unpay`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw await buildHttpError(response, 'Falha ao marcar como não pago.', 'BILLING-MARK-UNPAID');
+  }
+}
+
+export async function deleteWorkshop(workshopId: string): Promise<void> {
+  const token = await getAuthToken();
+  const response = await fetch(`/api/workshops/${workshopId}`, {
+    method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
 
   if (!response.ok) {
-    throw await buildHttpError(response, 'Falha ao marcar parcela como nao paga.', 'BILLING-INSTALLMENT-UNPAY');
+    throw await buildHttpError(response, 'Falha ao excluir a oficina.', 'WORKSHOP-DELETE');
+  }
+}
+
+export interface UpdateWorkshopPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  monthlyFee?: number;
+  billingDueDay?: number;
+  status?: 'active' | 'blocked';
+}
+
+export async function updateWorkshop(workshopId: string, data: UpdateWorkshopPayload): Promise<void> {
+  const token = await getAuthToken();
+  const response = await fetch(`/api/workshops/${workshopId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await buildHttpError(response, 'Falha ao atualizar a oficina.', 'WORKSHOP-UPDATE');
   }
 }

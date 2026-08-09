@@ -149,30 +149,7 @@ export interface WorkshopBillingOverview {
 }
 
 export interface WorkshopBillingDetails {
-  summary: WorkshopBillingSummary;
   workshop: WorkshopBillingView;
-  recentPayments: WorkshopBillingPayment[];
-  installments?: WorkshopBillingInstallment[];
-  currentInstallment?: WorkshopBillingInstallment | null;
   ownerEmail?: string;
-}
-
-export interface WorkshopBillingInstallmentAction {
-  type: 'pay' | 'unpay';
-  label: string;
-}
-
-export interface WorkshopBillingInstallment {
-  installmentId: string;
-  workshopId: string;
-  periodKey: string;
-  amount: number;
-  dueAt: string;
-  status: 'paid' | 'pending' | 'overdue';
-  paidAt?: string;
-  paymentId?: string;
-  updatedAt: string;
-  statusLabel?: string;
-  nextAction?: WorkshopBillingInstallmentAction;
 }
 

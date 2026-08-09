@@ -66,11 +66,6 @@ export function LoginPage() {
           <p className="mt-4 max-w-xl text-base text-slate-100 lg:text-lg">
             A Ferramenta Digital da Sua Oficina
           </p>
-          <div className="mt-8 space-y-3 text-sm text-slate-200 lg:text-base">
-            <p>Controle de clientes, veiculos, orcamentos e financeiro.</p>
-            <p>Fluxo rapido para atendimento e acompanhamento em tempo real.</p>
-            <p>Base pronta para escalar do piloto ao dia a dia da oficina.</p>
-          </div>
         </section>
 
         <Card className="w-full">
@@ -116,14 +111,6 @@ export function LoginPage() {
             <p>Sem conta? Entre em contato conosco para comecar.</p>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-700">Seguranca do acesso</p>
-            <ul className="mt-2 space-y-1 text-xs text-slate-600">
-              <li>Acesse somente os dominios oficiais mecfix-f6458.firebaseapp.com ou mecfix-f6458.web.app.</li>
-              <li>Nunca compartilhe sua senha por e-mail, chat ou WhatsApp.</li>
-              <li>Se suspeitar de fraude, contate suporte@mecfix.com antes de continuar.</li>
-            </ul>
-          </div>
         </Card>
       </div>
     </div>

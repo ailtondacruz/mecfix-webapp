@@ -11,7 +11,6 @@ import {
   type Workshop,
   type WorkshopBillingOverview,
 } from '../../../shared';
-import { useAuth } from '../../../shared/hooks/useAuth';
 import { getBillingOverview } from '../services/billing.service';
 
 interface WorkshopOwnerCredentials {
@@ -67,7 +66,6 @@ function maskTemporaryPassword(password: string): string {
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [billingOverview, setBillingOverview] = useState<WorkshopBillingOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -148,6 +146,27 @@ export function AdminDashboardPage() {
     return 'Paga';
   }
 
+  function getBillingStateChip(state: WorkshopBillingOverview['workshops'][number]['billingState']): string {
+    if (state === 'overdue') return 'rounded-full px-2.5 py-0.5 text-xs font-semibold bg-red-100 text-red-700';
+    if (state === 'suspended') return 'rounded-full px-2.5 py-0.5 text-xs font-semibold bg-rose-100 text-rose-700';
+    if (state === 'due_soon') return 'rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700';
+    if (state === 'pending') return 'rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-600';
+    return 'rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700';
+  }
+
+  function getRowHighlight(workshop: WorkshopBillingOverview['workshops'][number]): string {
+    if (workshop.billingState === 'overdue' || workshop.status === 'blocked') {
+      return 'border-l-2 border-l-red-400 bg-red-50/40 hover:bg-red-50';
+    }
+    if (workshop.billingState === 'suspended') {
+      return 'border-l-2 border-l-rose-400 bg-rose-50/40 hover:bg-rose-50';
+    }
+    if (workshop.billingState === 'due_soon') {
+      return 'border-l-2 border-l-amber-400 hover:bg-amber-50/40';
+    }
+    return 'border-l-2 border-l-transparent hover:bg-slate-50';
+  }
+
   async function copyTemporaryPassword(): Promise<void> {
     if (!ownerCredentials?.temporaryPassword) {
       return;
@@ -163,100 +182,7 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <Layout
-      title="Painel Administrativo"
-      rightContent={
-        <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white/90 px-4 py-2 shadow-sm">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-mecfix-orange text-sm font-bold text-white">
-            {(user?.name || 'Admin')
-              .split(' ')
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((part) => part.charAt(0).toUpperCase())
-              .join('') || 'AU'}
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-slate-900">{user?.name || 'Admin User'}</p>
-            <p className="text-xs text-slate-500">{user?.email || 'root@mecfix.local'}</p>
-          </div>
-        </div>
-      }
-    >
-      <div className="page-grid mb-8 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="stat-card border-l-4 border-l-mecfix-navy">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="stat-label">Oficinas Cadastradas</p>
-              <h3 className="stat-value mt-2">{isLoading ? '...' : billingOverview?.summary.total ?? 0}</h3>
-            </div>
-            <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              Live
-            </span>
-          </div>
-        </Card>
-
-        <Card className="stat-card border-l-4 border-l-mecfix-orange">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="stat-label">Faturamento Mês</p>
-              <h3 className="stat-value mt-2 text-mecfix-orange">R$ 0</h3>
-            </div>
-            <span className="rounded-2xl bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
-              Financeiro
-            </span>
-          </div>
-        </Card>
-
-        <Card className="stat-card border-l-4 border-l-rose-500">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="stat-label">Taxa Cancelamento</p>
-              <h3 className="stat-value mt-2 text-rose-600">0%</h3>
-            </div>
-            <span className="rounded-2xl bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
-              Alerta
-            </span>
-          </div>
-        </Card>
-
-        <Card className="stat-card border-l-4 border-l-emerald-500">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="stat-label">Novas Assinaturas</p>
-              <h3 className="stat-value mt-2 text-emerald-600">0</h3>
-            </div>
-            <span className="rounded-2xl bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-              Crescimento
-            </span>
-          </div>
-        </Card>
-      </div>
-
-      <Card title="Assinaturas">
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{billingOverview?.summary.total ?? '...'}</p>
-          </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Pagas</p>
-            <p className="mt-2 text-2xl font-bold text-emerald-700">{billingOverview?.summary.paid ?? '...'}</p>
-          </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">A vencer</p>
-            <p className="mt-2 text-2xl font-bold text-amber-700">{billingOverview?.summary.dueSoon ?? '...'}</p>
-          </div>
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Vencidas</p>
-            <p className="mt-2 text-2xl font-bold text-rose-700">{billingOverview?.summary.overdue ?? '...'}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suspensas</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{billingOverview?.summary.suspended ?? '...'}</p>
-          </div>
-        </div>
-      </Card>
-
+    <Layout title="Painel Administrativo">
       <Card title="Gestão de Oficinas">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -334,7 +260,7 @@ export function AdminDashboardPage() {
                   key={workshop.workshopId}
                   type="button"
                   onClick={() => navigate(`/admin/workshops/${workshop.workshopId}`)}
-                  className="grid w-full grid-cols-1 gap-2 px-4 py-4 text-left transition hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 lg:grid-cols-5 lg:items-center lg:gap-4"
+                  className={`grid w-full grid-cols-1 gap-2 px-4 py-4 text-left transition focus:outline-none focus-visible:bg-slate-50 lg:grid-cols-5 lg:items-center lg:gap-4 ${getRowHighlight(workshop)}`}
                 >
                   <div>
                     <p className="text-base font-semibold text-slate-900">{workshop.name}</p>
@@ -349,11 +275,15 @@ export function AdminDashboardPage() {
                     <p className="text-xs text-slate-500 lg:hidden">Mensalidade</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-700">{formatBillingDate(workshop.billingDueAt)}</p>
+                    <p className={`text-sm ${workshop.billingState === 'overdue' ? 'font-semibold text-red-600' : 'text-slate-700'}`}>
+                      {formatBillingDate(workshop.billingDueAt)}
+                    </p>
                     <p className="text-xs text-slate-500 lg:hidden">Vencimento</p>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="soft-chip">{getBillingStateLabel(workshop.billingState)}</span>
+                    <span className={getBillingStateChip(workshop.billingState)}>
+                      {getBillingStateLabel(workshop.billingState)}
+                    </span>
                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 lg:hidden">Abrir</span>
                   </div>
                 </button>

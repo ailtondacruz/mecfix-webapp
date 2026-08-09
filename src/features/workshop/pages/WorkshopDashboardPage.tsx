@@ -6,7 +6,6 @@ import {
   readJsonSafely,
   type CreateWorkshopPayload,
   type WorkshopBillingDetails,
-  type WorkshopBillingInstallment,
 } from '../../../shared';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { auth, storage } from '../../../services/firebase';
@@ -16,7 +15,7 @@ import React, { useState, useEffect } from 'react';
 import { listBudgets } from '../budgets/services/budgets.service';
 import { listCustomers } from '../customers/services/customers.service';
 import { getMonthlyRevenue } from '../financials/services/financials.service';
-import { getMyBilling, getMyInstallments } from '../services/billing.service';
+import { getMyBilling } from '../services/billing.service';
 
 function getLogoButtonLabel(isUploading: boolean, hasLogo: boolean): string {
   if (isUploading) return 'Enviando...';
@@ -77,7 +76,6 @@ export function WorkshopDashboardPage() {
   const [customerCount, setCustomerCount] = useState<number | null>(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
   const [billingDetails, setBillingDetails] = useState<WorkshopBillingDetails | null>(null);
-  const [installments, setInstallments] = useState<WorkshopBillingInstallment[]>([]);
 
   useEffect(() => {
     if (!workshop) return;
@@ -86,7 +84,6 @@ export function WorkshopDashboardPage() {
     const now = new Date();
     void getMonthlyRevenue(now.getFullYear(), now.getMonth() + 1).then((value) => setMonthlyRevenue(value)).catch(() => setMonthlyRevenue(0));
     void getMyBilling().then((data) => setBillingDetails(data)).catch(() => setBillingDetails(null));
-    void getMyInstallments().then((data) => setInstallments(data)).catch(() => setInstallments([]));
   }, [workshop]);
 
   function getBillingLabel(state: WorkshopBillingDetails['workshop']['billingState']): string {
@@ -237,116 +234,80 @@ export function WorkshopDashboardPage() {
           </Card>
         )}
 
-        {/* Stats */}
+        {/* Cards de navegação + stats combinados */}
         {workshop && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Card className="space-y-1">
-              <p className="text-xs font-semibold uppercase text-slate-500">Clientes</p>
-              <p className="text-2xl font-bold text-slate-900">{customerCount ?? '…'}</p>
-              <div className="h-1 w-full rounded-full bg-blue-500/20" />
-            </Card>
+            <button
+              type="button"
+              onClick={() => navigate('/workshop/customers')}
+              className="group rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-lg">👥</div>
+                <span className="text-xs font-semibold text-slate-400 transition-colors group-hover:text-blue-500">Acessar →</span>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Clientes</p>
+              <p className="mt-1 text-3xl font-bold text-slate-900">{customerCount ?? '…'}</p>
+              <div className="mt-3 h-1 w-full rounded-full bg-blue-100">
+                <div className="h-1 w-1/3 rounded-full bg-blue-400 transition-all group-hover:w-full" />
+              </div>
+            </button>
 
-            <Card className="space-y-1">
-              <p className="text-xs font-semibold uppercase text-slate-500">Orçamentos</p>
-              <p className="text-2xl font-bold text-slate-900">{budgetCount ?? '…'}</p>
-              <div className="h-1 w-full rounded-full bg-orange-500/20" />
-            </Card>
+            <button
+              type="button"
+              onClick={() => navigate('/workshop/budgets')}
+              className="group rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-mecfix-orange/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-mecfix-orange"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-lg">📋</div>
+                <span className="text-xs font-semibold text-slate-400 transition-colors group-hover:text-mecfix-orange">Acessar →</span>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Orçamentos</p>
+              <p className="mt-1 text-3xl font-bold text-slate-900">{budgetCount ?? '…'}</p>
+              <div className="mt-3 h-1 w-full rounded-full bg-orange-100">
+                <div className="h-1 w-1/3 rounded-full bg-mecfix-orange transition-all group-hover:w-full" />
+              </div>
+            </button>
 
-            <Card className="space-y-1">
-              <p className="text-xs font-semibold uppercase text-slate-500">Faturamento mensal</p>
-              <p className="text-xl font-bold text-slate-900">
-                {monthlyRevenue === null
-                  ? '…'
-                  : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyRevenue)}
+            <button
+              type="button"
+              onClick={() => navigate('/workshop/financials')}
+              className="group rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-lg">💰</div>
+                <span className="text-xs font-semibold text-slate-400 transition-colors group-hover:text-emerald-600">Acessar →</span>
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Faturamento mensal</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {monthlyRevenue === null ? '…' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyRevenue)}
               </p>
-              <div className="h-1 w-full rounded-full bg-purple-500/20" />
-            </Card>
+              <div className="mt-3 h-1 w-full rounded-full bg-emerald-100">
+                <div className="h-1 w-1/3 rounded-full bg-emerald-400 transition-all group-hover:w-full" />
+              </div>
+            </button>
           </div>
         )}
 
-        {/* Navegação */}
-        {workshop && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg" onClick={() => navigate('/workshop/customers')}>
-              <div className="text-center">
-                <div className="mb-2 text-2xl">👥</div>
-                <h4 className="text-sm font-semibold text-slate-900">Clientes</h4>
-                <p className="text-xs text-slate-500">Gerenciar</p>
-              </div>
-            </Card>
-
-            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg" onClick={() => navigate('/workshop/budgets')}>
-              <div className="text-center">
-                <div className="mb-2 text-2xl">📋</div>
-                <h4 className="text-sm font-semibold text-slate-900">Orçamentos</h4>
-                <p className="text-xs text-slate-500">PDF e WhatsApp</p>
-              </div>
-            </Card>
-
-            <Card className="cursor-pointer transition-all hover:border-mecfix-orange hover:shadow-lg" onClick={() => navigate('/workshop/financials')}>
-              <div className="text-center">
-                <div className="mb-2 text-2xl">💰</div>
-                <h4 className="text-sm font-semibold text-slate-900">Financeiro</h4>
-                <p className="text-xs text-slate-500">Ver finanças</p>
-              </div>
-            </Card>
+        {workshop && billingDetails && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                billingDetails.workshop.billingState === 'paid' || billingDetails.workshop.billingState === 'due_soon'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {getBillingLabel(billingDetails.workshop.billingState)}
+              </span>
+              <span className="text-sm font-semibold text-slate-800">{formatWorkshopCurrency(workshop.monthlyFee)}<span className="text-xs font-normal text-slate-400">/mês</span></span>
+              <span className="hidden text-slate-300 sm:inline">·</span>
+              <span className="hidden text-xs text-slate-500 sm:inline">Dia {billingDetails.workshop.billingDueDay} · vence {formatWorkshopDueDate(billingDetails.workshop.billingDueAt)}</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span className="sm:hidden">Vence {formatWorkshopDueDate(billingDetails.workshop.billingDueAt)}</span>
+              <span>{formatWorkshopDueInDays(billingDetails.workshop.dueInDays)}</span>
+            </div>
           </div>
-        )}
-
-        {workshop && (
-          <Card title="Minha assinatura">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status atual</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <span className="rounded-full bg-mecfix-orange px-3 py-1 text-xs font-semibold text-white">
-                  {billingDetails ? getBillingLabel(billingDetails.workshop.billingState) : '...'}
-                </span>
-                <span className="text-sm text-slate-600">
-                  Vencimento em {billingDetails ? formatWorkshopDueDate(billingDetails.workshop.billingDueAt) : '...'}
-                </span>
-              </div>
-              <p className="mt-4 text-sm text-slate-700">
-                Mensalidade: <strong>{formatWorkshopCurrency(workshop.monthlyFee)}</strong>
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                Dia do vencimento: <strong>todo dia {billingDetails?.workshop.billingDueDay ?? workshop.billingDueDay ?? 10}</strong>
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                Último pagamento: <strong>{formatWorkshopBillingDate(billingDetails?.workshop.lastPaymentAt)}</strong>
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                Dias para vencer: <strong>{formatWorkshopDueInDays(billingDetails?.workshop.dueInDays)}</strong>
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {workshop && (
-          <Card title="Parcelas mensais">
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-              <div className="hidden grid-cols-5 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 sm:grid">
-                <span>Parcela</span>
-                <span>Vencimento</span>
-                <span>Valor</span>
-                <span>Status</span>
-                <span>Pagamento</span>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {installments.map((installment) => (
-                  <div key={installment.periodKey} className="grid grid-cols-1 gap-3 px-4 py-4 text-sm sm:grid-cols-5 sm:items-center sm:gap-4">
-                    <p className="font-semibold text-slate-900">Parcela {installment.periodKey}</p>
-                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Vencimento: </span>{formatWorkshopDueDate(installment.dueAt)}</p>
-                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Valor: </span>{formatWorkshopCurrency(installment.amount)}</p>
-                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Status: </span>{installment.statusLabel ?? installment.status}</p>
-                    <p><span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 sm:hidden">Pagamento: </span>{installment.paidAt ? formatWorkshopBillingDate(installment.paidAt) : 'Não pago'}</p>
-                  </div>
-                ))}
-                {installments.length === 0 ? (
-                  <div className="px-4 py-6 text-sm text-slate-500">Nenhuma parcela registrada ainda.</div>
-                ) : null}
-              </div>
-            </div>
-          </Card>
         )}
       </div>
 
