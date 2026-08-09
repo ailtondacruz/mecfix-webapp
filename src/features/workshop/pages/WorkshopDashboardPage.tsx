@@ -49,7 +49,7 @@ function formatWorkshopCurrency(value: number | undefined): string {
 }
 
 export function WorkshopDashboardPage() {
-  const { workshop, refreshWorkshop } = useAuth();
+  const { workshop, refreshWorkshop, isLoading } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -157,8 +157,20 @@ export function WorkshopDashboardPage() {
   return (
     <Layout title="Painel">
       <div className="space-y-4">
+        {/* Loading skeleton — evita flash do estado vazio durante init */}
+        {isLoading && (
+          <div className="space-y-3">
+            <div className="h-24 animate-pulse rounded-3xl bg-slate-100" />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="h-32 animate-pulse rounded-3xl bg-slate-100" />
+              <div className="h-32 animate-pulse rounded-3xl bg-slate-100" />
+              <div className="h-32 animate-pulse rounded-3xl bg-slate-100" />
+            </div>
+          </div>
+        )}
+
         {/* Sem oficina */}
-        {!workshop && (
+        {!isLoading && !workshop && (
           <Card>
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="mb-3 text-4xl">🏗️</div>
@@ -172,7 +184,7 @@ export function WorkshopDashboardPage() {
         )}
 
         {/* Cabeçalho da oficina + logo */}
-        {workshop && (
+        {!isLoading && workshop && (
           <Card>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               {workshop.logoUrl ? (
@@ -213,7 +225,7 @@ export function WorkshopDashboardPage() {
         )}
 
         {/* Cards de navegação + stats combinados */}
-        {workshop && (
+        {!isLoading && workshop && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <button
               type="button"
@@ -267,7 +279,7 @@ export function WorkshopDashboardPage() {
           </div>
         )}
 
-        {workshop && (
+        {!isLoading && workshop && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="flex items-center gap-2.5">
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
