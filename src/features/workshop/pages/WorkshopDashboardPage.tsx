@@ -12,10 +12,7 @@ import { auth, storage } from '../../../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import { listBudgets } from '../budgets/services/budgets.service';
-import { listCustomers } from '../customers/services/customers.service';
-import { getMonthlyRevenue } from '../financials/services/financials.service';
-import { getMyBilling } from '../services/billing.service';
+import { getMyDashboard } from '../services/billing.service';
 
 function getLogoButtonLabel(isUploading: boolean, hasLogo: boolean): string {
   if (isUploading) return 'Enviando...';
@@ -79,11 +76,16 @@ export function WorkshopDashboardPage() {
 
   useEffect(() => {
     if (!workshop) return;
-    void listBudgets().then((list) => setBudgetCount(list.length)).catch(() => setBudgetCount(0));
-    void listCustomers().then((list) => setCustomerCount(list.length)).catch(() => setCustomerCount(0));
-    const now = new Date();
-    void getMonthlyRevenue(now.getFullYear(), now.getMonth() + 1).then((value) => setMonthlyRevenue(value)).catch(() => setMonthlyRevenue(0));
-    void getMyBilling().then((data) => setBillingDetails(data)).catch(() => setBillingDetails(null));
+    void getMyDashboard().then((data) => {
+      setBudgetCount(data.budgetCount);
+      setCustomerCount(data.customerCount);
+      setMonthlyRevenue(data.monthlyRevenue);
+      setBillingDetails(data.billing);
+    }).catch(() => {
+      setBudgetCount(0);
+      setCustomerCount(0);
+      setMonthlyRevenue(0);
+    });
   }, [workshop]);
 
   function getBillingLabel(state: WorkshopBillingDetails['workshop']['billingState']): string {
