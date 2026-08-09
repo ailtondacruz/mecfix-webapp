@@ -62,9 +62,11 @@ export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
                   className="h-9 w-9 shrink-0 rounded-xl object-cover"
                 />
               ) : (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mecfix-navy text-sm font-black text-white">
-                  MF
-                </div>
+                <img
+                  src="/mecfix-logo.png"
+                  alt="MecFix"
+                  className="h-9 w-9 shrink-0 rounded-xl object-contain"
+                />
               )}
 
               <div className="min-w-0">

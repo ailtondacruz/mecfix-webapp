@@ -32,6 +32,7 @@ export function AuthProvider({ children }: Readonly<AuthProviderProps>) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isFetchingSession, setIsFetchingSession] = useState(false);
   const [authError, setAuthError] = useState('');
 
   const clearAuthError = useCallback(() => {
@@ -112,6 +113,7 @@ export function AuthProvider({ children }: Readonly<AuthProviderProps>) {
   // Restaura sessão ao inicializar
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setIsFetchingSession(true);
       try {
         setAuthError('');
 
@@ -164,6 +166,7 @@ export function AuthProvider({ children }: Readonly<AuthProviderProps>) {
         console.error('Session initialization error:', error);
       } finally {
         setIsInitializing(false);
+        setIsFetchingSession(false);
       }
     });
 
@@ -231,7 +234,7 @@ export function AuthProvider({ children }: Readonly<AuthProviderProps>) {
     user,
     workshop,
     authError,
-    isLoading: isLoading || isInitializing,
+    isLoading: isLoading || isInitializing || isFetchingSession,
     login,
     logout,
     refreshWorkshop,
