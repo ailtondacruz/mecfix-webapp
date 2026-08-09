@@ -5,7 +5,6 @@ import {
   CreateWorkshopModal,
   readJsonSafely,
   type CreateWorkshopPayload,
-  type WorkshopBillingDetails,
 } from '../../../shared';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { auth, storage } from '../../../services/firebase';
@@ -18,19 +17,6 @@ function getLogoButtonLabel(isUploading: boolean, hasLogo: boolean): string {
   if (isUploading) return 'Enviando...';
   if (hasLogo) return '🖼 Trocar logo';
   return '+ Logo';
-}
-
-function formatWorkshopBillingDate(value: string | undefined): string {
-  if (!value) {
-    return 'Sem pagamento registrado';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Data indisponível';
-  }
-
-  return date.toLocaleDateString('pt-BR');
 }
 
 function formatWorkshopDueDate(value: string | undefined): string {
@@ -72,7 +58,6 @@ export function WorkshopDashboardPage() {
   const [budgetCount, setBudgetCount] = useState<number | null>(null);
   const [customerCount, setCustomerCount] = useState<number | null>(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
-  const [billingDetails, setBillingDetails] = useState<WorkshopBillingDetails | null>(null);
 
   useEffect(() => {
     if (!workshop) return;
@@ -80,21 +65,12 @@ export function WorkshopDashboardPage() {
       setBudgetCount(data.budgetCount);
       setCustomerCount(data.customerCount);
       setMonthlyRevenue(data.monthlyRevenue);
-      setBillingDetails(data.billing);
     }).catch(() => {
       setBudgetCount(0);
       setCustomerCount(0);
       setMonthlyRevenue(0);
     });
   }, [workshop]);
-
-  function getBillingLabel(state: WorkshopBillingDetails['workshop']['billingState']): string {
-    if (state === 'due_soon') return 'A vencer';
-    if (state === 'overdue') return 'Vencida';
-    if (state === 'pending') return 'Pendente';
-    if (state === 'suspended') return 'Suspensa';
-    return 'Paga';
-  }
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -291,24 +267,21 @@ export function WorkshopDashboardPage() {
           </div>
         )}
 
-        {workshop && billingDetails && (
+        {workshop && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="flex items-center gap-2.5">
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                billingDetails.workshop.billingState === 'paid' || billingDetails.workshop.billingState === 'due_soon'
+                workshop.billingStatus === 'active'
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-red-100 text-red-700'
               }`}>
-                {getBillingLabel(billingDetails.workshop.billingState)}
+                {workshop.billingStatus === 'active' ? 'Paga' : 'Pendente'}
               </span>
               <span className="text-sm font-semibold text-slate-800">{formatWorkshopCurrency(workshop.monthlyFee)}<span className="text-xs font-normal text-slate-400">/mês</span></span>
               <span className="hidden text-slate-300 sm:inline">·</span>
-              <span className="hidden text-xs text-slate-500 sm:inline">Dia {billingDetails.workshop.billingDueDay} · vence {formatWorkshopDueDate(billingDetails.workshop.billingDueAt)}</span>
+              <span className="hidden text-xs text-slate-500 sm:inline">Dia {workshop.billingDueDay} · vence {formatWorkshopDueDate(workshop.billingDueAt)}</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <span className="sm:hidden">Vence {formatWorkshopDueDate(billingDetails.workshop.billingDueAt)}</span>
-              <span>{formatWorkshopDueInDays(billingDetails.workshop.dueInDays)}</span>
-            </div>
+            <span className="text-xs text-slate-400 sm:hidden">Vence {formatWorkshopDueDate(workshop.billingDueAt)}</span>
           </div>
         )}
       </div>

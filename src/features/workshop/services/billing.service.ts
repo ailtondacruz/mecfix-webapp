@@ -16,7 +16,6 @@ export async function getMyBilling(): Promise<WorkshopBillingDetails> {
 }
 
 export interface DashboardStats {
-  billing: WorkshopBillingDetails;
   budgetCount: number;
   customerCount: number;
   monthlyRevenue: number;
