@@ -65,7 +65,7 @@ export function Layout({ children, title, rightContent, backTo }: LayoutProps) {
                 <img
                   src="/mecfix-logo.png"
                   alt="MecFix"
-                  className="h-9 w-9 shrink-0 rounded-xl object-contain"
+                  className="h-8 w-auto shrink-0 object-contain"
                 />
               )}
 

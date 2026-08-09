@@ -28,6 +28,16 @@
 		@apply min-h-screen;
 	}
 
+	/* Tailwind Preflight resets button cursor — restore pointer for all interactive elements */
+	button,
+	[role="button"],
+	a,
+	label[for],
+	select,
+	summary {
+		@apply cursor-pointer;
+	}
+
 	h1,
 	h2,
 	h3,
